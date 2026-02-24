@@ -12,7 +12,7 @@ interface AppState {
   // Class data (simulated aggregate)
   classData: Record<string, ClassPerformance>;
   // Actions
-  loginAsStudent: (nickname: string, classCode: string) => void;
+  loginAsStudent: (nickname: string, classCode: string, quizMode?: 'unit-mastery' | 'mock-sol', selectedUnit?: string, coachPersonality?: 'historian' | 'gen-alpha') => void;
   loginAsTeacher: (classCode: string) => void;
   logout: () => void;
   recordAnswer: (answer: StudentAnswer) => void;
@@ -68,7 +68,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<StudentSession | null>(null);
   const [classData, setClassData] = useState<Record<string, ClassPerformance>>({});
 
-  const loginAsStudent = useCallback((nick: string, code: string) => {
+  const loginAsStudent = useCallback((nick: string, code: string, quizMode: 'unit-mastery' | 'mock-sol' = 'mock-sol', selectedUnit?: string, coachPersonality: 'historian' | 'gen-alpha' = 'historian') => {
     setNickname(nick);
     setClassCode(code);
     setIsLoggedIn(true);
@@ -82,6 +82,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       feedbackMode: false,
       feedbackQuestions: [],
       feedbackIndex: 0,
+      quizMode,
+      selectedUnit,
+      coachPersonality,
     });
   }, []);
 

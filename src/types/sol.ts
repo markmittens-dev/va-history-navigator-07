@@ -1,4 +1,6 @@
 export type ErrorCategory = 'memorization' | 'sequence' | 'stimulus';
+export type QuizMode = 'unit-mastery' | 'mock-sol';
+export type CoachPersonality = 'historian' | 'gen-alpha';
 
 export interface SOLStandard {
   id: string;
@@ -17,6 +19,14 @@ export interface Question {
   stimulusUrl?: string;
   stimulusCaption?: string;
   strategyTip: string;
+  genAlphaTip: string;
+  timelineData?: TimelineEvent[];
+}
+
+export interface TimelineEvent {
+  year: number;
+  label: string;
+  highlight?: boolean;
 }
 
 export interface StudentAnswer {
@@ -37,6 +47,9 @@ export interface StudentSession {
   feedbackMode: boolean;
   feedbackQuestions: Question[];
   feedbackIndex: number;
+  quizMode: QuizMode;
+  selectedUnit?: string;
+  coachPersonality: CoachPersonality;
 }
 
 export interface StandardPerformance {
