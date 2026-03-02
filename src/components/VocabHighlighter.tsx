@@ -59,7 +59,7 @@ const VocabHighlighter = ({ text }: VocabHighlighterProps) => {
           <button
             key={i}
             onClick={() => handleClick(part.text)}
-            className="underline decoration-accent decoration-2 underline-offset-2 font-semibold text-foreground hover:text-accent transition-colors cursor-pointer"
+            className="underline decoration-dotted decoration-secondary decoration-2 underline-offset-2 font-semibold text-foreground hover:text-secondary transition-colors cursor-pointer"
           >
             {part.text}
           </button>
