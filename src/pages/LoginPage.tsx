@@ -12,7 +12,7 @@ import { QuizMode, CoachPersonality } from '@/types/sol';
 const LoginPage = () => {
   const [mode, setMode] = useState<'select' | 'student' | 'teacher'>('select');
   const [step, setStep] = useState<'credentials' | 'setup'>('credentials');
-  const [nickname, setNickname] = useState('');
+  const [remediationId, setRemediationId] = useState('');
   const [classCode, setClassCode] = useState('');
   const [error, setError] = useState('');
   const [quizMode, setQuizMode] = useState<QuizMode>('mock-sol');
@@ -22,13 +22,13 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   const handleStudentCredentials = () => {
-    if (!nickname.trim()) { setError('Enter a nickname'); return; }
+    if (!remediationId.trim()) { setError('Enter your Remediation ID (e.g., VA-01)'); return; }
     if (!/^\d{6}$/.test(classCode)) { setError('Enter a valid 6-digit class code'); return; }
     setStep('setup');
   };
 
   const handleStartQuiz = () => {
-    loginAsStudent(nickname.trim(), classCode, quizMode, selectedUnit, coachPersonality);
+    loginAsStudent(remediationId.trim(), classCode, quizMode, selectedUnit, coachPersonality);
     navigate('/assessment');
   };
 
@@ -40,12 +40,7 @@ const LoginPage = () => {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-sm"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
@@ -69,8 +64,9 @@ const LoginPage = () => {
         {mode === 'student' && step === 'credentials' && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Nickname</label>
-              <Input placeholder="Choose a nickname" value={nickname} onChange={e => { setNickname(e.target.value); setError(''); }} maxLength={20} className="h-12" />
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Remediation ID</label>
+              <Input placeholder="e.g., VA-01" value={remediationId} onChange={e => { setRemediationId(e.target.value); setError(''); }} maxLength={20} className="h-12" />
+              <p className="mt-1 text-xs text-muted-foreground">Your teacher will give you this ID. No personal info needed.</p>
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">Class Code</label>
@@ -102,34 +98,23 @@ const LoginPage = () => {
             <div>
               <label className="mb-2 block text-sm font-semibold text-foreground">Quiz Mode</label>
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setQuizMode('unit-mastery')}
-                  className={`rounded-xl border-2 p-3 text-left text-sm transition-all ${quizMode === 'unit-mastery' ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}
-                >
+                <button onClick={() => setQuizMode('unit-mastery')} className={`rounded-xl border-2 p-3 text-left text-sm transition-all ${quizMode === 'unit-mastery' ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}>
                   <p className="font-semibold text-foreground">Unit Mastery</p>
                   <p className="text-xs text-muted-foreground">15 questions per unit</p>
                 </button>
-                <button
-                  onClick={() => setQuizMode('mock-sol')}
-                  className={`rounded-xl border-2 p-3 text-left text-sm transition-all ${quizMode === 'mock-sol' ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}
-                >
+                <button onClick={() => setQuizMode('mock-sol')} className={`rounded-xl border-2 p-3 text-left text-sm transition-all ${quizMode === 'mock-sol' ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}>
                   <p className="font-semibold text-foreground">Mock SOL</p>
                   <p className="text-xs text-muted-foreground">65 questions, full test</p>
                 </button>
               </div>
             </div>
 
-            {/* Unit Selector (only for Unit Mastery) */}
             {quizMode === 'unit-mastery' && (
               <div>
                 <label className="mb-2 block text-sm font-semibold text-foreground">Select Unit</label>
                 <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-border bg-card p-2">
                   {solStandards.map(std => (
-                    <button
-                      key={std.id}
-                      onClick={() => setSelectedUnit(std.id)}
-                      className={`w-full rounded-lg p-2.5 text-left text-sm transition-all ${selectedUnit === std.id ? 'bg-primary/10 border border-primary' : 'hover:bg-muted'}`}
-                    >
+                    <button key={std.id} onClick={() => setSelectedUnit(std.id)} className={`w-full rounded-lg p-2.5 text-left text-sm transition-all ${selectedUnit === std.id ? 'bg-primary/10 border border-primary' : 'hover:bg-muted'}`}>
                       <span className="font-semibold text-foreground">{std.id}</span>
                       <span className="ml-2 text-xs text-muted-foreground">{std.title}</span>
                     </button>

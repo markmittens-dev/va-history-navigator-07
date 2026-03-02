@@ -21,6 +21,9 @@ export interface Question {
   strategyTip: string;
   genAlphaTip: string;
   timelineData?: TimelineEvent[];
+  headline?: string; // renders as newspaper clipping
+  quote?: string;    // renders as attributed quote
+  quoteSource?: string;
 }
 
 export interface TimelineEvent {
@@ -38,8 +41,15 @@ export interface StudentAnswer {
   timestamp: number;
 }
 
+export interface VocabClick {
+  term: string;
+  timestamp: number;
+  remediationId: string;
+  classCode: string;
+}
+
 export interface StudentSession {
-  nickname: string;
+  nickname: string; // now used as Remediation ID
   classCode: string;
   answers: StudentAnswer[];
   currentStandardIndex: number;
@@ -50,6 +60,8 @@ export interface StudentSession {
   quizMode: QuizMode;
   selectedUnit?: string;
   coachPersonality: CoachPersonality;
+  vocabClicks: VocabClick[];
+  hintsUsed: number;
 }
 
 export interface StandardPerformance {
@@ -65,4 +77,6 @@ export interface ClassPerformance {
   classCode: string;
   standards: Record<string, StandardPerformance>;
   totalStudents: number;
+  vocabClicks: VocabClick[];
+  hintsByStudent: Record<string, number>;
 }
