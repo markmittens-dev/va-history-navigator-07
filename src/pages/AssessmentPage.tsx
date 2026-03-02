@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, ArrowRight, LogOut, Lightbulb, BarChart3 } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowRight, ArrowLeft, LogOut, Lightbulb, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppState } from '@/context/AppContext';
 import { questionBank, generatePracticeQuestions, getMockSOLQuestions, getUnitMasteryQuestions } from '@/data/questions';
@@ -9,6 +9,9 @@ import { Question, ErrorCategory } from '@/types/sol';
 import { useNavigate } from 'react-router-dom';
 import { Progress } from '@/components/ui/progress';
 import Timeline from '@/components/Timeline';
+import VocabHighlighter from '@/components/VocabHighlighter';
+import NewspaperClipping from '@/components/NewspaperClipping';
+import QuoteAttribution from '@/components/QuoteAttribution';
 
 const errorCategoryLabels: Record<ErrorCategory, string> = {
   memorization: '📝 Memorization',
@@ -17,7 +20,7 @@ const errorCategoryLabels: Record<ErrorCategory, string> = {
 };
 
 const AssessmentPage = () => {
-  const { session, recordAnswer, logout, nickname, getStandardPerformance } = useAppState();
+  const { session, recordAnswer, logout, nickname, getStandardPerformance, incrementHints } = useAppState();
   const navigate = useNavigate();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -27,6 +30,7 @@ const AssessmentPage = () => {
   const [feedbackQuestions, setFeedbackQuestions] = useState<Question[]>([]);
   const [feedbackIndex, setFeedbackIndex] = useState(0);
   const [showStrategy, setShowStrategy] = useState(false);
+  const [history, setHistory] = useState<number[]>([]);
 
   const questions = useMemo(() => {
     if (!session) return questionBank;
@@ -41,79 +45,23 @@ const AssessmentPage = () => {
   const activeIndex = feedbackMode ? feedbackIndex : currentIndex;
   const currentQuestion = activeQuestions[activeIndex];
 
-  if (!session) {
-    navigate('/');
-    return null;
-  }
+  if (!session) { navigate('/'); return null; }
 
   if (!currentQuestion) {
-    const totalQ = session.answers.length;
-    const correctQ = session.answers.filter(a => a.correct).length;
-    const pct = totalQ > 0 ? Math.round((correctQ / totalQ) * 100) : 0;
-    const passed = pct >= 70;
-
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-secondary/20">
-            <BarChart3 className="h-10 w-10 text-secondary" />
-          </div>
-          <h2 className="font-display text-2xl font-bold text-foreground">
-            {isGenAlpha
-              ? (passed ? 'You ate that up! 🔥' : 'You got cooked a lil bit 💀')
-              : `Great Work, ${nickname}!`}
-          </h2>
-          <p className="mt-2 text-muted-foreground">
-            {correctQ} of {totalQ} correct ({pct}%)
-            {session.quizMode === 'mock-sol' && (
-              <span className={`ml-2 font-bold ${passed ? 'text-secondary' : 'text-destructive'}`}>
-                {passed ? '✅ PASS' : '❌ DID NOT PASS'}
-              </span>
-            )}
-          </p>
-
-          <div className="mt-6 space-y-2">
-            {solStandards.filter(s => session.answers.some(a => a.standardId === s.id)).map(std => {
-              const perf = getStandardPerformance(std.id);
-              const p = perf.total > 0 ? Math.round((perf.correct / perf.total) * 100) : 0;
-              return (
-                <div key={std.id} className="rounded-lg bg-card p-3 text-left">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-foreground">{std.id}</span>
-                    <span className={p >= 70 ? 'text-secondary' : 'text-destructive'}>{p}%</span>
-                  </div>
-                  <Progress value={p} className="mt-1.5 h-2" />
-                </div>
-              );
-            })}
-          </div>
-
-          <Button onClick={() => { logout(); navigate('/'); }} className="mt-6 w-full bg-primary text-primary-foreground">
-            Done
-          </Button>
-        </motion.div>
-      </div>
-    );
+    return <ResultsScreen session={session} nickname={nickname} isGenAlpha={isGenAlpha} getStandardPerformance={getStandardPerformance} onDone={() => { logout(); navigate('/'); }} />;
   }
 
-  const handleSelect = (index: number) => {
-    if (showResult) return;
-    setSelectedOption(index);
-  };
+  const handleSelect = (index: number) => { if (!showResult) setSelectedOption(index); };
 
   const handleSubmit = () => {
     if (selectedOption === null) return;
     const correct = selectedOption === currentQuestion.correctIndex;
-    recordAnswer({
-      questionId: currentQuestion.id,
-      standardId: currentQuestion.standardId,
-      selectedIndex: selectedOption,
-      correct,
-      errorCategory: currentQuestion.errorCategory,
-      timestamp: Date.now(),
-    });
+    recordAnswer({ questionId: currentQuestion.id, standardId: currentQuestion.standardId, selectedIndex: selectedOption, correct, errorCategory: currentQuestion.errorCategory, timestamp: Date.now() });
     setShowResult(true);
-    if (!correct) setShowStrategy(true);
+    if (!correct) {
+      setShowStrategy(true);
+      incrementHints();
+    }
   };
 
   const handleNext = () => {
@@ -121,6 +69,7 @@ const AssessmentPage = () => {
     if (!wasCorrect && !feedbackMode) {
       const practice = generatePracticeQuestions(currentQuestion, questionBank);
       if (practice.length > 0) {
+        setHistory(prev => [...prev, currentIndex]);
         setFeedbackQuestions(practice);
         setFeedbackIndex(0);
         setFeedbackMode(true);
@@ -138,6 +87,7 @@ const AssessmentPage = () => {
         setCurrentIndex(prev => prev + 1);
       }
     } else {
+      setHistory(prev => [...prev, currentIndex]);
       setCurrentIndex(prev => prev + 1);
     }
     setSelectedOption(null);
@@ -145,6 +95,21 @@ const AssessmentPage = () => {
     setShowStrategy(false);
   };
 
+  const handleBack = () => {
+    if (feedbackMode) {
+      if (feedbackIndex > 0) setFeedbackIndex(prev => prev - 1);
+      else { setFeedbackMode(false); }
+    } else if (history.length > 0) {
+      const prevIndex = history[history.length - 1];
+      setHistory(prev => prev.slice(0, -1));
+      setCurrentIndex(prevIndex);
+    }
+    setSelectedOption(null);
+    setShowResult(false);
+    setShowStrategy(false);
+  };
+
+  const canGoBack = feedbackMode ? feedbackIndex > 0 : history.length > 0;
   const progressPct = feedbackMode
     ? Math.round(((feedbackIndex + 1) / feedbackQuestions.length) * 100)
     : Math.round(((currentIndex + 1) / questions.length) * 100);
@@ -156,14 +121,22 @@ const AssessmentPage = () => {
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur-sm px-4 py-3">
         <div className="mx-auto flex max-w-lg items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {feedbackMode ? '🔄 Practice Mode' : `Q ${currentIndex + 1}/${questions.length}`}
-              {isGenAlpha && ' 🔥'}
-            </p>
-            <Progress value={progressPct} className="mt-1 h-1.5 w-32" />
+          <div className="flex items-center gap-3">
+            {canGoBack && (
+              <button onClick={handleBack} className="text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            )}
+            <div>
+              <p className="text-xs text-muted-foreground">
+                {feedbackMode ? '🔄 Practice Mode' : `Q ${currentIndex + 1}/${questions.length}`}
+                {isGenAlpha && ' 🔥'}
+              </p>
+              <Progress value={progressPct} className="mt-1 h-1.5 w-32" />
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{nickname}</span>
             {isGenAlpha && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent">GEN α</span>}
             <button onClick={() => { logout(); navigate('/'); }} className="text-muted-foreground hover:text-foreground">
               <LogOut className="h-5 w-5" />
@@ -183,8 +156,18 @@ const AssessmentPage = () => {
                 <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{errorCategoryLabels[currentQuestion.errorCategory]}</span>
               </div>
 
-              {/* Question text */}
-              <h2 className="font-display text-lg font-semibold text-foreground leading-snug mb-5">{currentQuestion.text}</h2>
+              {/* Newspaper clipping for headline questions */}
+              {currentQuestion.headline && <NewspaperClipping headline={currentQuestion.headline} />}
+
+              {/* Quote attribution */}
+              {currentQuestion.quote && currentQuestion.quoteSource && (
+                <QuoteAttribution quote={currentQuestion.quote} source={currentQuestion.quoteSource} />
+              )}
+
+              {/* Question text with vocab highlighting */}
+              <h2 className="font-display text-lg font-semibold text-foreground leading-snug mb-5">
+                <VocabHighlighter text={currentQuestion.text} />
+              </h2>
 
               {/* Timeline for sequence questions */}
               {currentQuestion.errorCategory === 'sequence' && currentQuestion.timelineData && showResult && (
@@ -205,7 +188,7 @@ const AssessmentPage = () => {
                     <button key={i} onClick={() => handleSelect(i)} className={`w-full rounded-xl border-2 p-4 text-left text-sm font-medium transition-all ${optionStyle}`}>
                       <div className="flex items-center gap-3">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">{String.fromCharCode(65 + i)}</span>
-                        <span>{option}</span>
+                        <span><VocabHighlighter text={option} /></span>
                         {showResult && i === currentQuestion.correctIndex && <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-secondary" />}
                         {showResult && i === selectedOption && i !== currentQuestion.correctIndex && <XCircle className="ml-auto h-5 w-5 shrink-0 text-destructive" />}
                       </div>
@@ -249,5 +232,55 @@ const AssessmentPage = () => {
     </div>
   );
 };
+
+// Extracted results screen component
+function ResultsScreen({ session, nickname, isGenAlpha, getStandardPerformance, onDone }: {
+  session: NonNullable<ReturnType<typeof import('@/context/AppContext').useAppState>['session']>;
+  nickname: string; isGenAlpha: boolean;
+  getStandardPerformance: (id: string) => import('@/types/sol').StandardPerformance;
+  onDone: () => void;
+}) {
+  const totalQ = session.answers.length;
+  const correctQ = session.answers.filter(a => a.correct).length;
+  const pct = totalQ > 0 ? Math.round((correctQ / totalQ) * 100) : 0;
+  const passed = pct >= 70;
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm text-center">
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-secondary/20">
+          <BarChart3 className="h-10 w-10 text-secondary" />
+        </div>
+        <h2 className="font-display text-2xl font-bold text-foreground">
+          {isGenAlpha ? (passed ? 'You ate that up! 🔥' : 'You got cooked a lil bit 💀') : `Great Work, ${nickname}!`}
+        </h2>
+        <p className="mt-2 text-muted-foreground">
+          {correctQ} of {totalQ} correct ({pct}%)
+          {session.quizMode === 'mock-sol' && (
+            <span className={`ml-2 font-bold ${passed ? 'text-secondary' : 'text-destructive'}`}>
+              {passed ? '✅ PASS' : '❌ DID NOT PASS'}
+            </span>
+          )}
+        </p>
+        <div className="mt-6 space-y-2">
+          {solStandards.filter(s => session.answers.some(a => a.standardId === s.id)).map(std => {
+            const perf = getStandardPerformance(std.id);
+            const p = perf.total > 0 ? Math.round((perf.correct / perf.total) * 100) : 0;
+            return (
+              <div key={std.id} className="rounded-lg bg-card p-3 text-left">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-foreground">{std.id}</span>
+                  <span className={p >= 70 ? 'text-secondary' : 'text-destructive'}>{p}%</span>
+                </div>
+                <Progress value={p} className="mt-1.5 h-2" />
+              </div>
+            );
+          })}
+        </div>
+        <Button onClick={onDone} className="mt-6 w-full bg-primary text-primary-foreground">Done</Button>
+      </motion.div>
+    </div>
+  );
+}
 
 export default AssessmentPage;

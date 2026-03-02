@@ -1,22 +1,20 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { StudentSession, StudentAnswer, ClassPerformance, StandardPerformance } from '@/types/sol';
+import { StudentSession, StudentAnswer, ClassPerformance, StandardPerformance, VocabClick } from '@/types/sol';
 
 interface AppState {
-  // Auth
   isLoggedIn: boolean;
   isTeacher: boolean;
-  nickname: string;
+  nickname: string; // Remediation ID
   classCode: string;
-  // Student session
   session: StudentSession | null;
-  // Class data (simulated aggregate)
   classData: Record<string, ClassPerformance>;
-  // Actions
-  loginAsStudent: (nickname: string, classCode: string, quizMode?: 'unit-mastery' | 'mock-sol', selectedUnit?: string, coachPersonality?: 'historian' | 'gen-alpha') => void;
+  loginAsStudent: (remediationId: string, classCode: string, quizMode?: 'unit-mastery' | 'mock-sol', selectedUnit?: string, coachPersonality?: 'historian' | 'gen-alpha') => void;
   loginAsTeacher: (classCode: string) => void;
   logout: () => void;
   recordAnswer: (answer: StudentAnswer) => void;
   getStandardPerformance: (standardId: string) => StandardPerformance;
+  logVocabClick: (term: string) => void;
+  incrementHints: () => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -29,35 +27,51 @@ export function useAppState() {
 
 function createEmptyPerformance(standardId: string): StandardPerformance {
   return {
-    standardId,
-    total: 0,
-    correct: 0,
+    standardId, total: 0, correct: 0,
     memorization: { total: 0, correct: 0 },
     sequence: { total: 0, correct: 0 },
     stimulus: { total: 0, correct: 0 },
   };
 }
 
-// Simulated class data for teacher view demo
 function generateDemoClassData(classCode: string): ClassPerformance {
   const standards = ['VUS.1','VUS.2','VUS.3','VUS.4','VUS.5','VUS.6','VUS.7','VUS.8','VUS.9','VUS.10','VUS.11','VUS.12','VUS.13','VUS.14','VUS.15','VUS.16','VUS.17'];
   const perf: Record<string, StandardPerformance> = {};
-
   standards.forEach(sid => {
     const total = Math.floor(Math.random() * 30) + 20;
     const correctRate = 0.3 + Math.random() * 0.5;
     const correct = Math.floor(total * correctRate);
     perf[sid] = {
-      standardId: sid,
-      total,
-      correct,
+      standardId: sid, total, correct,
       memorization: { total: Math.floor(total * 0.4), correct: Math.floor(total * 0.4 * (correctRate + (Math.random() - 0.5) * 0.2)) },
       sequence: { total: Math.floor(total * 0.3), correct: Math.floor(total * 0.3 * (correctRate + (Math.random() - 0.5) * 0.2)) },
       stimulus: { total: Math.floor(total * 0.3), correct: Math.floor(total * 0.3 * (correctRate + (Math.random() - 0.5) * 0.3)) },
     };
   });
-
-  return { classCode, standards: perf, totalStudents: Math.floor(Math.random() * 20) + 10 };
+  // Demo vocab clicks
+  const demoVocabClicks: VocabClick[] = [
+    { term: 'Ratification', timestamp: Date.now(), remediationId: 'VA-01', classCode },
+    { term: 'Ratification', timestamp: Date.now(), remediationId: 'VA-02', classCode },
+    { term: 'Ratification', timestamp: Date.now(), remediationId: 'VA-03', classCode },
+    { term: 'Secede', timestamp: Date.now(), remediationId: 'VA-01', classCode },
+    { term: 'Secede', timestamp: Date.now(), remediationId: 'VA-04', classCode },
+    { term: 'Tariff', timestamp: Date.now(), remediationId: 'VA-02', classCode },
+    { term: 'Containment', timestamp: Date.now(), remediationId: 'VA-05', classCode },
+    { term: 'Containment', timestamp: Date.now(), remediationId: 'VA-03', classCode },
+    { term: 'Containment', timestamp: Date.now(), remediationId: 'VA-01', classCode },
+    { term: 'Containment', timestamp: Date.now(), remediationId: 'VA-06', classCode },
+    { term: 'Disenfranchisement', timestamp: Date.now(), remediationId: 'VA-02', classCode },
+    { term: 'Disenfranchisement', timestamp: Date.now(), remediationId: 'VA-07', classCode },
+    { term: 'Disenfranchisement', timestamp: Date.now(), remediationId: 'VA-08', classCode },
+    { term: 'Federalism', timestamp: Date.now(), remediationId: 'VA-01', classCode },
+    { term: 'Emancipation', timestamp: Date.now(), remediationId: 'VA-03', classCode },
+    { term: 'Emancipation', timestamp: Date.now(), remediationId: 'VA-09', classCode },
+  ];
+  const demoHints: Record<string, number> = {
+    'VA-01': 12, 'VA-02': 3, 'VA-03': 8, 'VA-04': 1, 'VA-05': 15,
+    'VA-06': 0, 'VA-07': 6, 'VA-08': 2, 'VA-09': 9, 'VA-10': 4,
+  };
+  return { classCode, standards: perf, totalStudents: Math.floor(Math.random() * 20) + 10, vocabClicks: demoVocabClicks, hintsByStudent: demoHints };
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -68,23 +82,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<StudentSession | null>(null);
   const [classData, setClassData] = useState<Record<string, ClassPerformance>>({});
 
-  const loginAsStudent = useCallback((nick: string, code: string, quizMode: 'unit-mastery' | 'mock-sol' = 'mock-sol', selectedUnit?: string, coachPersonality: 'historian' | 'gen-alpha' = 'historian') => {
-    setNickname(nick);
+  const loginAsStudent = useCallback((remId: string, code: string, quizMode: 'unit-mastery' | 'mock-sol' = 'mock-sol', selectedUnit?: string, coachPersonality: 'historian' | 'gen-alpha' = 'historian') => {
+    setNickname(remId);
     setClassCode(code);
     setIsLoggedIn(true);
     setIsTeacher(false);
     setSession({
-      nickname: nick,
-      classCode: code,
-      answers: [],
-      currentStandardIndex: 0,
-      currentQuestionIndex: 0,
-      feedbackMode: false,
-      feedbackQuestions: [],
-      feedbackIndex: 0,
-      quizMode,
-      selectedUnit,
-      coachPersonality,
+      nickname: remId, classCode: code, answers: [],
+      currentStandardIndex: 0, currentQuestionIndex: 0,
+      feedbackMode: false, feedbackQuestions: [], feedbackIndex: 0,
+      quizMode, selectedUnit, coachPersonality,
+      vocabClicks: [], hintsUsed: 0,
     });
   }, []);
 
@@ -92,7 +100,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setClassCode(code);
     setIsLoggedIn(true);
     setIsTeacher(true);
-    // Generate demo data
     if (!classData[code]) {
       setClassData(prev => ({ ...prev, [code]: generateDemoClassData(code) }));
     }
@@ -111,20 +118,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!prev) return prev;
       return { ...prev, answers: [...prev.answers, answer] };
     });
-    // Update class data
     setClassData(prev => {
       const code = classCode;
-      const existing = prev[code] || { classCode: code, standards: {}, totalStudents: 1 };
+      const existing = prev[code] || { classCode: code, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {} };
       const sp = existing.standards[answer.standardId] || createEmptyPerformance(answer.standardId);
       sp.total++;
       if (answer.correct) sp.correct++;
       const cat = sp[answer.errorCategory];
       cat.total++;
       if (answer.correct) cat.correct++;
-      return {
-        ...prev,
-        [code]: { ...existing, standards: { ...existing.standards, [answer.standardId]: { ...sp } } }
-      };
+      return { ...prev, [code]: { ...existing, standards: { ...existing.standards, [answer.standardId]: { ...sp } } } };
     });
   }, [classCode]);
 
@@ -142,12 +145,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return perf;
   }, [session]);
 
+  const logVocabClick = useCallback((term: string) => {
+    const click: VocabClick = { term, timestamp: Date.now(), remediationId: nickname, classCode };
+    setSession(prev => {
+      if (!prev) return prev;
+      return { ...prev, vocabClicks: [...prev.vocabClicks, click] };
+    });
+    setClassData(prev => {
+      const existing = prev[classCode] || { classCode, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {} };
+      return { ...prev, [classCode]: { ...existing, vocabClicks: [...existing.vocabClicks, click] } };
+    });
+  }, [nickname, classCode]);
+
+  const incrementHints = useCallback(() => {
+    setSession(prev => {
+      if (!prev) return prev;
+      return { ...prev, hintsUsed: prev.hintsUsed + 1 };
+    });
+    setClassData(prev => {
+      const existing = prev[classCode];
+      if (!existing) return prev;
+      const hints = { ...existing.hintsByStudent };
+      hints[nickname] = (hints[nickname] || 0) + 1;
+      return { ...prev, [classCode]: { ...existing, hintsByStudent: hints } };
+    });
+  }, [nickname, classCode]);
+
   return (
     <AppContext.Provider value={{
       isLoggedIn, isTeacher, nickname, classCode,
       session, classData,
       loginAsStudent, loginAsTeacher, logout,
       recordAnswer, getStandardPerformance,
+      logVocabClick, incrementHints,
     }}>
       {children}
     </AppContext.Provider>
