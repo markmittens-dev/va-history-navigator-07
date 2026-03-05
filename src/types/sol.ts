@@ -11,6 +11,8 @@ export interface SOLStandard {
 
 export interface Question {
   id: string;
+  templateId: string; // groups 5 versions of same question
+  version: number;    // 1-5
   standardId: string;
   text: string;
   options: string[];
@@ -21,8 +23,8 @@ export interface Question {
   strategyTip: string;
   genAlphaTip: string;
   timelineData?: TimelineEvent[];
-  headline?: string; // renders as newspaper clipping
-  quote?: string;    // renders as attributed quote
+  headline?: string;
+  quote?: string;
   quoteSource?: string;
 }
 
@@ -49,7 +51,7 @@ export interface VocabClick {
 }
 
 export interface StudentSession {
-  nickname: string; // now used as Remediation ID
+  nickname: string; // Remediation ID (PP-101)
   classCode: string;
   answers: StudentAnswer[];
   currentStandardIndex: number;
@@ -62,6 +64,8 @@ export interface StudentSession {
   coachPersonality: CoachPersonality;
   vocabClicks: VocabClick[];
   hintsUsed: number;
+  retakeNumber: number; // tracks which retake attempt (1-5)
+  usedTemplateVersions: Record<string, number[]>; // templateId -> versions already seen
 }
 
 export interface StandardPerformance {

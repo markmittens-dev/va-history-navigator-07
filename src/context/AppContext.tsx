@@ -1,13 +1,22 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { StudentSession, StudentAnswer, ClassPerformance, StandardPerformance, VocabClick } from '@/types/sol';
 
+interface RetakeRecord {
+  standardId: string;
+  retakeNumber: number;
+  correct: number;
+  total: number;
+  byCategory: Record<string, { correct: number; total: number }>;
+}
+
 interface AppState {
   isLoggedIn: boolean;
   isTeacher: boolean;
-  nickname: string; // Remediation ID
+  nickname: string; // Remediation ID (PP-101)
   classCode: string;
   session: StudentSession | null;
   classData: Record<string, ClassPerformance>;
+  retakeHistory: Record<string, RetakeRecord[]>; // by remediation ID
   loginAsStudent: (remediationId: string, classCode: string, quizMode?: 'unit-mastery' | 'mock-sol', selectedUnit?: string, coachPersonality?: 'historian' | 'gen-alpha') => void;
   loginAsTeacher: (classCode: string) => void;
   logout: () => void;
@@ -15,6 +24,7 @@ interface AppState {
   getStandardPerformance: (standardId: string) => StandardPerformance;
   logVocabClick: (term: string) => void;
   incrementHints: () => void;
+  trackVersionUsed: (templateId: string, version: number) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -35,7 +45,7 @@ function createEmptyPerformance(standardId: string): StandardPerformance {
 }
 
 function generateDemoClassData(classCode: string): ClassPerformance {
-  const standards = ['VUS.1','VUS.2','VUS.3','VUS.4','VUS.5','VUS.6','VUS.7','VUS.8','VUS.9','VUS.10','VUS.11','VUS.12','VUS.13','VUS.14','VUS.15','VUS.16','VUS.17'];
+  const standards = ['VUS.2','VUS.3','VUS.4','VUS.5','VUS.6','VUS.7','VUS.8','VUS.9','VUS.10','VUS.11','VUS.12','VUS.13','VUS.14','VUS.15','VUS.16','VUS.17'];
   const perf: Record<string, StandardPerformance> = {};
   standards.forEach(sid => {
     const total = Math.floor(Math.random() * 30) + 20;
@@ -48,30 +58,52 @@ function generateDemoClassData(classCode: string): ClassPerformance {
       stimulus: { total: Math.floor(total * 0.3), correct: Math.floor(total * 0.3 * (correctRate + (Math.random() - 0.5) * 0.3)) },
     };
   });
-  // Demo vocab clicks
   const demoVocabClicks: VocabClick[] = [
-    { term: 'Ratification', timestamp: Date.now(), remediationId: 'VA-01', classCode },
-    { term: 'Ratification', timestamp: Date.now(), remediationId: 'VA-02', classCode },
-    { term: 'Ratification', timestamp: Date.now(), remediationId: 'VA-03', classCode },
-    { term: 'Secede', timestamp: Date.now(), remediationId: 'VA-01', classCode },
-    { term: 'Secede', timestamp: Date.now(), remediationId: 'VA-04', classCode },
-    { term: 'Tariff', timestamp: Date.now(), remediationId: 'VA-02', classCode },
-    { term: 'Containment', timestamp: Date.now(), remediationId: 'VA-05', classCode },
-    { term: 'Containment', timestamp: Date.now(), remediationId: 'VA-03', classCode },
-    { term: 'Containment', timestamp: Date.now(), remediationId: 'VA-01', classCode },
-    { term: 'Containment', timestamp: Date.now(), remediationId: 'VA-06', classCode },
-    { term: 'Disenfranchisement', timestamp: Date.now(), remediationId: 'VA-02', classCode },
-    { term: 'Disenfranchisement', timestamp: Date.now(), remediationId: 'VA-07', classCode },
-    { term: 'Disenfranchisement', timestamp: Date.now(), remediationId: 'VA-08', classCode },
-    { term: 'Federalism', timestamp: Date.now(), remediationId: 'VA-01', classCode },
-    { term: 'Emancipation', timestamp: Date.now(), remediationId: 'VA-03', classCode },
-    { term: 'Emancipation', timestamp: Date.now(), remediationId: 'VA-09', classCode },
+    { term: 'Ratification', timestamp: Date.now(), remediationId: 'PP-101', classCode },
+    { term: 'Ratification', timestamp: Date.now(), remediationId: 'PP-102', classCode },
+    { term: 'Ratification', timestamp: Date.now(), remediationId: 'PP-103', classCode },
+    { term: 'Secede', timestamp: Date.now(), remediationId: 'PP-101', classCode },
+    { term: 'Secede', timestamp: Date.now(), remediationId: 'PP-104', classCode },
+    { term: 'Tariff', timestamp: Date.now(), remediationId: 'PP-102', classCode },
+    { term: 'Containment', timestamp: Date.now(), remediationId: 'PP-105', classCode },
+    { term: 'Containment', timestamp: Date.now(), remediationId: 'PP-103', classCode },
+    { term: 'Containment', timestamp: Date.now(), remediationId: 'PP-101', classCode },
+    { term: 'Containment', timestamp: Date.now(), remediationId: 'PP-106', classCode },
+    { term: 'Disenfranchisement', timestamp: Date.now(), remediationId: 'PP-102', classCode },
+    { term: 'Disenfranchisement', timestamp: Date.now(), remediationId: 'PP-107', classCode },
+    { term: 'Federalism', timestamp: Date.now(), remediationId: 'PP-101', classCode },
+    { term: 'Emancipation', timestamp: Date.now(), remediationId: 'PP-103', classCode },
+    { term: 'Emancipation', timestamp: Date.now(), remediationId: 'PP-109', classCode },
   ];
   const demoHints: Record<string, number> = {
-    'VA-01': 12, 'VA-02': 3, 'VA-03': 8, 'VA-04': 1, 'VA-05': 15,
-    'VA-06': 0, 'VA-07': 6, 'VA-08': 2, 'VA-09': 9, 'VA-10': 4,
+    'PP-101': 12, 'PP-102': 3, 'PP-103': 8, 'PP-104': 1, 'PP-105': 15,
+    'PP-106': 0, 'PP-107': 6, 'PP-108': 2, 'PP-109': 9, 'PP-110': 4,
   };
   return { classCode, standards: perf, totalStudents: Math.floor(Math.random() * 20) + 10, vocabClicks: demoVocabClicks, hintsByStudent: demoHints };
+}
+
+function generateDemoRetakeHistory(): Record<string, RetakeRecord[]> {
+  const demoIds = ['PP-101', 'PP-102', 'PP-103', 'PP-105'];
+  const history: Record<string, RetakeRecord[]> = {};
+  demoIds.forEach(id => {
+    const retakes: RetakeRecord[] = [];
+    const numRetakes = Math.floor(Math.random() * 3) + 2;
+    for (let r = 1; r <= numRetakes; r++) {
+      retakes.push({
+        standardId: `VUS.${Math.floor(Math.random() * 16) + 2}`,
+        retakeNumber: r,
+        correct: Math.floor(Math.random() * 10) + 5 + r * 2,
+        total: 15,
+        byCategory: {
+          memorization: { correct: Math.floor(Math.random() * 4) + r, total: 6 },
+          sequence: { correct: Math.floor(Math.random() * 3) + r, total: 4 },
+          stimulus: { correct: Math.floor(Math.random() * 3) + r, total: 5 },
+        },
+      });
+    }
+    history[id] = retakes;
+  });
+  return history;
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -81,6 +113,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [classCode, setClassCode] = useState('');
   const [session, setSession] = useState<StudentSession | null>(null);
   const [classData, setClassData] = useState<Record<string, ClassPerformance>>({});
+  const [retakeHistory, setRetakeHistory] = useState<Record<string, RetakeRecord[]>>({});
 
   const loginAsStudent = useCallback((remId: string, code: string, quizMode: 'unit-mastery' | 'mock-sol' = 'mock-sol', selectedUnit?: string, coachPersonality: 'historian' | 'gen-alpha' = 'historian') => {
     setNickname(remId);
@@ -93,6 +126,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       feedbackMode: false, feedbackQuestions: [], feedbackIndex: 0,
       quizMode, selectedUnit, coachPersonality,
       vocabClicks: [], hintsUsed: 0,
+      retakeNumber: 1,
+      usedTemplateVersions: {},
     });
   }, []);
 
@@ -102,16 +137,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsTeacher(true);
     if (!classData[code]) {
       setClassData(prev => ({ ...prev, [code]: generateDemoClassData(code) }));
+      setRetakeHistory(generateDemoRetakeHistory());
     }
   }, [classData]);
 
   const logout = useCallback(() => {
+    // Save retake record before logging out
+    if (session && session.answers.length > 0) {
+      const correct = session.answers.filter(a => a.correct).length;
+      const byCategory: Record<string, { correct: number; total: number }> = {};
+      session.answers.forEach(a => {
+        if (!byCategory[a.errorCategory]) byCategory[a.errorCategory] = { correct: 0, total: 0 };
+        byCategory[a.errorCategory].total++;
+        if (a.correct) byCategory[a.errorCategory].correct++;
+      });
+      const record: RetakeRecord = {
+        standardId: session.selectedUnit || 'mock-sol',
+        retakeNumber: session.retakeNumber,
+        correct,
+        total: session.answers.length,
+        byCategory,
+      };
+      setRetakeHistory(prev => {
+        const existing = prev[session.nickname] || [];
+        return { ...prev, [session.nickname]: [...existing, record] };
+      });
+    }
     setIsLoggedIn(false);
     setIsTeacher(false);
     setNickname('');
     setClassCode('');
     setSession(null);
-  }, []);
+  }, [session]);
 
   const recordAnswer = useCallback((answer: StudentAnswer) => {
     setSession(prev => {
@@ -171,13 +228,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [nickname, classCode]);
 
+  const trackVersionUsed = useCallback((templateId: string, version: number) => {
+    setSession(prev => {
+      if (!prev) return prev;
+      const existing = prev.usedTemplateVersions[templateId] || [];
+      if (existing.includes(version)) return prev;
+      return {
+        ...prev,
+        usedTemplateVersions: {
+          ...prev.usedTemplateVersions,
+          [templateId]: [...existing, version],
+        },
+      };
+    });
+  }, []);
+
   return (
     <AppContext.Provider value={{
       isLoggedIn, isTeacher, nickname, classCode,
-      session, classData,
+      session, classData, retakeHistory,
       loginAsStudent, loginAsTeacher, logout,
       recordAnswer, getStandardPerformance,
-      logVocabClick, incrementHints,
+      logVocabClick, incrementHints, trackVersionUsed,
     }}>
       {children}
     </AppContext.Provider>
