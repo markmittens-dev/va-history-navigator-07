@@ -1,49 +1,8 @@
 import { Question } from '@/types/sol';
+import { generateAllVariants, selectVersionsForQuiz } from './questionVariants';
 
-export const questionBank: Question[] = [
-  // ===== VUS.1 — Early North America =====
-  {
-    id: 'vus1-1', standardId: 'VUS.1', text: 'American Indian populations were most impacted by the introduction of European —',
-    options: ['weapons', 'diseases', 'religion', 'culture'],
-    correctIndex: 1, errorCategory: 'memorization',
-    strategyTip: 'Europeans brought smallpox and other diseases that devastated Indigenous populations who had no immunity.',
-    genAlphaTip: 'Bro, diseases were the real final boss. No cap, Indigenous peoples had zero immunity and it was absolutely devastating. 💀',
-  },
-  {
-    id: 'vus1-2', standardId: 'VUS.1', text: 'Which entrepreneurial explorer sailed west in 1492, seeking a trade route to Asia?',
-    options: ['Ponce de León', 'Francisco Coronado', 'Christopher Columbus', 'John Cabot'],
-    correctIndex: 2, errorCategory: 'memorization',
-    strategyTip: 'Columbus was funded by Spain\'s Ferdinand and Isabella to find a westward route to the Indies.',
-    genAlphaTip: 'Columbus literally said "bet, I\'ll find Asia" and ended up somewhere totally different. OG explorer energy fr. 🧭',
-  },
-  {
-    id: 'vus1-3', standardId: 'VUS.1', text: 'Place these events in order: 1) Columbus reaches Americas, 2) Roanoke Colony, 3) Jamestown founded, 4) Plymouth Colony.',
-    options: ['1, 2, 3, 4', '2, 1, 3, 4', '1, 3, 2, 4', '3, 1, 4, 2'],
-    correctIndex: 0, errorCategory: 'sequence',
-    strategyTip: 'Columbus 1492 → Roanoke 1587 → Jamestown 1607 → Plymouth 1620. Build a mental timeline.',
-    genAlphaTip: 'Timeline check: Columbus (1492) → Roanoke (1587, they ghosted 👻) → Jamestown (1607) → Plymouth (1620). Easy clap.',
-    timelineData: [
-      { year: 1492, label: 'Columbus', highlight: true },
-      { year: 1587, label: 'Roanoke', highlight: true },
-      { year: 1607, label: 'Jamestown', highlight: true },
-      { year: 1620, label: 'Plymouth', highlight: true },
-    ],
-  },
-  {
-    id: 'vus1-4', standardId: 'VUS.1', text: 'The initial French exploration of North America resulted in —',
-    options: ['economic colonies in Florida', 'competition with Spanish settlers', 'plantations using slave labor', 'cooperation with native groups'],
-    correctIndex: 3, errorCategory: 'memorization',
-    strategyTip: 'The French built trading relationships with Indigenous nations, particularly in the fur trade.',
-    genAlphaTip: 'France really said "let\'s be friends" and built the fur trade WITH Indigenous peoples. Lowkey the most chill colonizers. 🤝',
-  },
-  {
-    id: 'vus1-5', standardId: 'VUS.1', text: 'Which technological development made nautical exploration possible in the 15th century?',
-    options: ['The printing press', 'The magnetic compass', 'Gunpowder weapons', 'The steam engine'],
-    correctIndex: 1, errorCategory: 'memorization',
-    strategyTip: 'The magnetic compass, along with the astrolabe and improved ship designs (caravels), enabled long ocean voyages.',
-    genAlphaTip: 'The compass was basically the GPS of the 1400s. Without it, explorers would be absolutely cooked trying to cross the ocean. 🧭',
-  },
-
+// Master question templates (version 1 only, VUS.1 EXCLUDED — starts at VUS.2)
+const masterQuestions: Omit<Question, 'templateId' | 'version'>[] = [
   // ===== VUS.2 — First Thirteen Colonies =====
   {
     id: 'vus2-1', standardId: 'VUS.2', text: 'Which colony was established as a business venture?',
@@ -264,6 +223,8 @@ export const questionBank: Question[] = [
     id: 'vus6-10', standardId: 'VUS.6', text: '"It is emphatically the province and duty of the judicial department to say what the law is." Which Supreme Court decision includes this?',
     options: ['Marbury v. Madison', 'Cohens v. Virginia', 'Gibbons v. Ogden', 'McCulloch v. Maryland'],
     correctIndex: 0, errorCategory: 'stimulus',
+    quote: 'It is emphatically the province and duty of the judicial department to say what the law is.',
+    quoteSource: 'Chief Justice John Marshall, Marbury v. Madison (1803)',
     strategyTip: 'This quote from Chief Justice Marshall in Marbury v. Madison (1803) established the principle of judicial review.',
     genAlphaTip: 'Marshall literally said "we decide what\'s legal" in Marbury v. Madison. That one quote gave the Supreme Court its main power. Iconic. 🏛️',
   },
@@ -309,6 +270,8 @@ export const questionBank: Question[] = [
     id: 'vus8-1', standardId: 'VUS.8', text: 'President Lincoln was speaking to this person when he said "So you\'re the little woman who wrote the book that made this great war!" —',
     options: ['Elizabeth Cady Stanton', 'Sojourner Truth', 'Harriet Tubman', 'Harriet Beecher Stowe'],
     correctIndex: 3, errorCategory: 'stimulus',
+    quote: 'So you\'re the little woman who wrote the book that made this great war!',
+    quoteSource: 'Abraham Lincoln, attributed remark to Harriet Beecher Stowe',
     strategyTip: 'Uncle Tom\'s Cabin by Harriet Beecher Stowe dramatized the horrors of slavery and fueled anti-slavery sentiment.',
     genAlphaTip: 'Harriet Beecher Stowe wrote Uncle Tom\'s Cabin and it literally broke the internet (1852 edition). Lincoln credited her for starting the Civil War discourse. 📖🔥',
   },
@@ -394,6 +357,8 @@ export const questionBank: Question[] = [
     id: 'vus9-8', standardId: 'VUS.9', text: '"With malice toward none; with charity for all..." expressed Lincoln\'s plans for —',
     options: ['creating a strategy for Union victory', 'eliminating Jim Crow laws', 'convincing Congress to abolish slavery', 'readmitting the Confederate states'],
     correctIndex: 3, errorCategory: 'stimulus',
+    quote: 'With malice toward none; with charity for all...',
+    quoteSource: 'Abraham Lincoln, Second Inaugural Address (1865)',
     strategyTip: 'Lincoln\'s Second Inaugural Address called for gentle Reconstruction — bringing the South back without vengeance.',
     genAlphaTip: 'Lincoln was saying "no hate, just healing." He wanted Reconstruction to be about unity, not revenge. Wholesome king energy. 🕊️',
   },
@@ -408,6 +373,7 @@ export const questionBank: Question[] = [
     id: 'vus9-10', standardId: 'VUS.9', text: 'Which photograph of Richmond, Virginia illustrates the economic devastation caused by the Civil War on the South?',
     options: ['Industrial pollution', 'Economic devastation', 'Political corruption', 'Agricultural destruction'],
     correctIndex: 1, errorCategory: 'stimulus',
+    headline: 'RICHMOND IN RUINS: THE COST OF WAR',
     strategyTip: 'Photos of burned-out buildings in Richmond show the destruction of the Southern economy and infrastructure.',
     genAlphaTip: 'Richmond was literally in ruins. The photos show buildings destroyed, the economy wrecked. The South was absolutely cooked after the war. 🔥🏚️',
   },
@@ -463,28 +429,14 @@ export const questionBank: Question[] = [
     genAlphaTip: 'New tech = more stuff made faster. Productivity went up, factories went brrrr. That\'s industrialization in a nutshell. ⚙️',
   },
   {
-    id: 'vus10-8', standardId: 'VUS.10', text: 'A description of driving cattle across the Indian country to Missouri in 1853 concerns the —',
-    options: ['transportation of cattle to markets in the Midwest', 'immigration of workers for the Transcontinental Railroad', 'movement of cattle to feed troops during the Civil War', 'relocation of settlers to new territory'],
-    correctIndex: 0, errorCategory: 'stimulus',
-    strategyTip: 'Cattle drives moved livestock from ranches to railroad towns and markets in the Midwest.',
-    genAlphaTip: 'Cattle drives were the OG road trips — moving cows across the country to sell them. Cowboys herding cattle to Midwest markets. Yeehaw. 🤠🐄',
-  },
-  {
-    id: 'vus10-9', standardId: 'VUS.10', text: 'The Standard Oil Company breakup was a result of the passage of the —',
+    id: 'vus10-8', standardId: 'VUS.10', text: 'The Standard Oil Company breakup was a result of the passage of the —',
     options: ['Interstate Commerce Act', '17th Amendment', 'Sherman Antitrust Act', '19th Amendment'],
     correctIndex: 2, errorCategory: 'memorization',
     strategyTip: 'The Sherman Antitrust Act (1890) was used to break up monopolies like Standard Oil.',
     genAlphaTip: 'The Sherman Antitrust Act said "monopolies are illegal" and Rockefeller\'s Standard Oil got broken up. Anti-monopoly W. ⚖️',
   },
   {
-    id: 'vus10-10', standardId: 'VUS.10', text: 'A family shown in an 1886 photograph is most likely on the way to —',
-    options: ['find factory work in the Northeast', 'claim a homestead in the West', 'work as indentured servants in Virginia', 'prospect for gold in California'],
-    correctIndex: 1, errorCategory: 'stimulus',
-    strategyTip: 'In the 1880s, the Homestead Act drew families west to claim free land and start farms.',
-    genAlphaTip: 'Pioneer family heading West in 1886 = Homestead Act vibes. Free land if you farm it. Manifest Destiny was calling. 🏡',
-  },
-  {
-    id: 'vus10-11', standardId: 'VUS.10', text: 'Place these Progressive reforms in order: 1) 19th Amendment, 2) Pure Food and Drug Act, 3) 17th Amendment, 4) Federal Reserve Act.',
+    id: 'vus10-9', standardId: 'VUS.10', text: 'Place these Progressive reforms in order: 1) 19th Amendment, 2) Pure Food and Drug Act, 3) 17th Amendment, 4) Federal Reserve Act.',
     options: ['2, 3, 4, 1', '1, 2, 3, 4', '3, 4, 2, 1', '2, 4, 3, 1'],
     correctIndex: 0, errorCategory: 'sequence',
     strategyTip: 'Pure Food & Drug (1906) → 17th Amendment (1913) → Federal Reserve (1913) → 19th Amendment (1920).',
@@ -497,7 +449,7 @@ export const questionBank: Question[] = [
     ],
   },
   {
-    id: 'vus10-12', standardId: 'VUS.10', text: 'Which individual helped found the NAACP?',
+    id: 'vus10-10', standardId: 'VUS.10', text: 'Which individual helped found the NAACP?',
     options: ['James Meredith', 'W.E.B. DuBois', 'Thurgood Marshall', 'Booker T. Washington'],
     correctIndex: 1, errorCategory: 'memorization',
     strategyTip: 'DuBois co-founded the NAACP in 1909 to fight for civil rights through political action and legal challenges.',
@@ -509,6 +461,7 @@ export const questionBank: Question[] = [
     id: 'vus11-1', standardId: 'VUS.11', text: 'A headline reading "SUBMARINE SINKS LUSITANIA" eventually led to —',
     options: ['involvement in the Spanish American War', 'construction of the Panama Canal', 'entry into World War I', 'neutrality during the 1930s'],
     correctIndex: 2, errorCategory: 'stimulus',
+    headline: 'SUBMARINE SINKS LUSITANIA — 1,198 DEAD',
     strategyTip: 'The sinking of the Lusitania (1915) turned American public opinion against Germany, leading to US entry into WWI.',
     genAlphaTip: 'Germany sank the Lusitania and America was NOT happy. That was one of the big reasons the US entered WWI. Germany chose violence and got consequences. 🚢💥',
   },
@@ -623,28 +576,14 @@ export const questionBank: Question[] = [
     genAlphaTip: 'Lend-Lease was America saying "we\'re not fighting YET, but here\'s a bunch of weapons and supplies for free." Support from the sidelines. 📦🔫',
   },
   {
-    id: 'vus14-3', standardId: 'VUS.14', text: 'The Lend-Lease Act was passed in response to increased —',
-    options: ['concern about German aggression in Europe', 'anger over Japanese invasion of China', 'concern about Italian demands in North Africa', 'fear over the German pact with the Soviet Union'],
-    correctIndex: 0, errorCategory: 'memorization',
-    strategyTip: 'As Germany conquered Europe, the US needed to help Britain survive without directly entering the war.',
-    genAlphaTip: 'Germany was taking over Europe and the US was like "we need to help Britain before it\'s too late." Lend-Lease was the answer. 🇬🇧🤝🇺🇸',
-  },
-  {
-    id: 'vus14-4', standardId: 'VUS.14', text: 'Which factor best completes: "Onset of WWII → [?] → Changing roles for many women"?',
+    id: 'vus14-3', standardId: 'VUS.14', text: 'Which factor best completes: "Onset of WWII → [?] → Changing roles for many women"?',
     options: ['Mass migration', 'Labor shortages', 'Resource rationing', 'High birthrates'],
     correctIndex: 1, errorCategory: 'stimulus',
     strategyTip: 'When men went to war, women filled factory jobs — Rosie the Riveter symbolized this shift.',
     genAlphaTip: 'Men went to war → factories needed workers → women stepped up. Rosie the Riveter energy. Women were like "we got this." 💪👩‍🔧',
   },
   {
-    id: 'vus14-5', standardId: 'VUS.14', text: 'War bond drives, rationing, and wage/price controls during WWII served to —',
-    options: ['maintain supplies for the war effort', 'rebuild a war-damaged economy', 'establish international relief funds', 'protect personal savings'],
-    correctIndex: 0, errorCategory: 'memorization',
-    strategyTip: 'These home front measures redirected resources to support the military overseas.',
-    genAlphaTip: 'War bonds, rationing, and price controls = everyone at home sacrificing for the troops. Home front grind. 🏠⚔️',
-  },
-  {
-    id: 'vus14-6', standardId: 'VUS.14', text: 'Order these WWII events: 1) D-Day, 2) Pearl Harbor, 3) Atomic bombs dropped, 4) Battle of Midway.',
+    id: 'vus14-4', standardId: 'VUS.14', text: 'Order these WWII events: 1) D-Day, 2) Pearl Harbor, 3) Atomic bombs dropped, 4) Battle of Midway.',
     options: ['2, 4, 1, 3', '1, 2, 3, 4', '2, 1, 4, 3', '4, 2, 1, 3'],
     correctIndex: 0, errorCategory: 'sequence',
     strategyTip: 'Pearl Harbor (1941) → Midway (1942) → D-Day (1944) → Atomic bombs (1945).',
@@ -657,329 +596,190 @@ export const questionBank: Question[] = [
     ],
   },
   {
-    id: 'vus14-7', standardId: 'VUS.14', text: 'The wreckage at Normandy, France is from a large-scale invasion to —',
-    options: ['force the surrender of Japan', 'liberate Europe', 'seek the support of Russia', 'free Germany'],
-    correctIndex: 1, errorCategory: 'stimulus',
-    strategyTip: 'D-Day (June 6, 1944) was the Allied invasion of Nazi-occupied France to liberate Europe.',
-    genAlphaTip: 'Normandy = D-Day = the biggest invasion ever to free Europe from the Nazis. Absolute legendary moment in history. 🏖️⚔️',
-  },
-  {
-    id: 'vus14-8', standardId: 'VUS.14', text: 'The United States interned many Japanese Americans during WWII because of —',
+    id: 'vus14-5', standardId: 'VUS.14', text: 'The United States interned many Japanese Americans during WWII because of —',
     options: ['their refusal to be deported', 'a fear they would aid the enemy', 'a concern over violent protest', 'their refusal to be drafted'],
     correctIndex: 1, errorCategory: 'memorization',
     strategyTip: 'Executive Order 9066 imprisoned Japanese Americans based on unfounded fears of espionage — a dark chapter in US history.',
     genAlphaTip: 'Japanese Americans got locked up because of paranoia, not evidence. Executive Order 9066 was one of America\'s biggest L\'s. Absolutely wrong. ❌',
   },
-  {
-    id: 'vus14-9', standardId: 'VUS.14', text: 'The WWII Nisei regiment members were primarily —',
-    options: ['Mexican Americans', 'Japanese Americans', 'German Americans', 'Italian Americans'],
-    correctIndex: 1, errorCategory: 'memorization',
-    strategyTip: 'The 442nd Regiment, composed of Japanese Americans, became the most decorated unit in US military history.',
-    genAlphaTip: 'The Nisei regiment was all Japanese Americans who fought for the US while their families were literally in internment camps. Most decorated unit ever. Absolute goats. 🐐',
-  },
-  {
-    id: 'vus14-10', standardId: 'VUS.14', text: 'The Bushido code during WWII was exemplified by Japanese troops —',
-    options: ['welcoming Allied troops', 'treating POWs humanely', 'accepting unconditional surrender', 'committing suicide rather than surrendering'],
-    correctIndex: 3, errorCategory: 'stimulus',
-    strategyTip: 'Bushido valued honor above life — Japanese soldiers often chose death over the dishonor of surrender.',
-    genAlphaTip: 'Bushido = honor above everything. Japanese troops would rather die than surrender. That\'s how deep the code went. Understanding this explains a LOT about the Pacific War. ⚔️',
-  },
-  {
-    id: 'vus14-11', standardId: 'VUS.14', text: 'During WWII, posters like "GET YOUR FARM IN THE FIGHT!" were meant to —',
-    options: ['motivate women to enter defense factories', 'encourage civilians to join the armed forces', 'show how Americans on the home front could contribute', 'pressure industries to dedicate resources to war'],
-    correctIndex: 2, errorCategory: 'stimulus',
-    strategyTip: 'Home front propaganda posters urged all civilians to contribute — through farming, conservation, and supporting the war effort.',
-    genAlphaTip: 'These posters were saying "even if you\'re not fighting, you can still help." Home front contribution was huge. Everyone had a role. 🌾⚔️',
-  },
-  {
-    id: 'vus14-12', standardId: 'VUS.14', text: 'After WWII, which country was occupied by the United States (not the Soviet Union)?',
-    options: ['Japan', 'Poland', 'France', 'China'],
-    correctIndex: 0, errorCategory: 'memorization',
-    strategyTip: 'The US occupied Japan and parts of Western Europe; the Soviets occupied Eastern Europe.',
-    genAlphaTip: 'US occupied Japan, Soviets took Eastern Europe. That division basically set up the whole Cold War. Japan got democracy, Eastern Europe got communism. 🗾',
-  },
-  {
-    id: 'vus14-13', standardId: 'VUS.14', text: 'Which diagram shows the development of East Germany correctly: Occupation → [?] → Berlin Wall?',
-    options: ['Rise of Fascism', 'Communist Control', 'Rapid Rearmament', 'Formation of Democracy'],
-    correctIndex: 1, errorCategory: 'stimulus',
-    strategyTip: 'Soviet occupation → communist government established → Berlin Wall built to prevent people from fleeing to the West.',
-    genAlphaTip: 'Soviets took over → imposed communism → built the Berlin Wall to trap people in. That\'s the East Germany pipeline. 🧱',
-  },
 
   // ===== VUS.15 — Cold War =====
   {
-    id: 'vus15-1', standardId: 'VUS.15', text: 'Which conflict best represents an application of the containment policy?',
-    options: ['Spanish American War', 'World War I', 'World War II', 'Vietnam War'],
-    correctIndex: 3, errorCategory: 'memorization',
-    strategyTip: 'Vietnam was fought specifically to contain (prevent the spread of) communism in Southeast Asia.',
-    genAlphaTip: 'Containment = stop communism from spreading. Vietnam was literally fought because the US didn\'t want another country going communist. Containment in action. 🛑',
+    id: 'vus15-1', standardId: 'VUS.15', text: 'What was the main purpose of the Marshall Plan?',
+    options: ['To form a military alliance', 'To rebuild European economies after WWII', 'To contain communism in Asia', 'To establish the United Nations'],
+    correctIndex: 1, errorCategory: 'memorization',
+    strategyTip: 'The Marshall Plan (1948) provided billions in aid to rebuild war-torn Europe and prevent the spread of communism.',
+    genAlphaTip: 'The Marshall Plan was America\'s "here\'s money to rebuild" move. Help Europe get back on its feet so communism doesn\'t take over. Big brain. 🧠💰',
   },
   {
-    id: 'vus15-2', standardId: 'VUS.15', text: 'On a 1980s map, which country did President Reagan describe as an "evil empire"?',
-    options: ['China', 'Soviet Union', 'Cuba', 'North Korea'],
-    correctIndex: 1, errorCategory: 'stimulus',
-    strategyTip: 'Reagan famously called the Soviet Union the "evil empire" to rally opposition to communism.',
-    genAlphaTip: 'Reagan looked at the Soviet Union and said "that\'s an evil empire." No filter, straight bars. Cold War trash talk at its finest. 🎤🔥',
+    id: 'vus15-2', standardId: 'VUS.15', text: 'The policy of containment was designed to —',
+    options: ['spread democracy worldwide', 'prevent the spread of communism', 'negotiate peace treaties', 'reduce military spending'],
+    correctIndex: 1, errorCategory: 'memorization',
+    strategyTip: 'Containment (Truman Doctrine) aimed to stop communism from spreading beyond where it already existed.',
+    genAlphaTip: 'Containment = don\'t let communism spread any further. Like putting a fence around it. America\'s main Cold War strategy. 🧊',
   },
   {
-    id: 'vus15-3', standardId: 'VUS.15', text: 'The collapse of communism in the late 1980s led to the reunification of —',
-    options: ['Germany', 'Korea', 'Vietnam', 'Yugoslavia'],
-    correctIndex: 0, errorCategory: 'memorization',
-    strategyTip: 'The Berlin Wall fell in 1989, and East and West Germany reunified in 1990.',
-    genAlphaTip: 'The Berlin Wall came down in 1989 and Germany got back together. One of the most W moments in history. 🧱💥→🇩🇪',
+    id: 'vus15-3', standardId: 'VUS.15', text: 'The Cuban Missile Crisis of 1962 was resolved when —',
+    options: ['the US invaded Cuba', 'the Soviet Union removed its missiles from Cuba', 'Cuba joined NATO', 'the US declared war on the Soviet Union'],
+    correctIndex: 1, errorCategory: 'memorization',
+    strategyTip: 'Kennedy and Khrushchev negotiated: Soviets removed missiles from Cuba, US pledged not to invade Cuba.',
+    genAlphaTip: 'JFK and Khrushchev played the scariest game of chicken ever. Soviets blinked first and removed the missiles. World almost ended fr. 😰🚀',
   },
   {
-    id: 'vus15-4', standardId: 'VUS.15', text: 'The Soviet Union built the Berlin Wall in 1961 to —',
-    options: ['reroute automobile traffic', 'prevent transfer of money from West to East', 'prevent escape of Eastern Europeans to the West', 'fortify government headquarters'],
-    correctIndex: 2, errorCategory: 'memorization',
-    strategyTip: 'People were fleeing communist East Germany for freedom in the West — the Wall was built to stop them.',
-    genAlphaTip: 'People kept leaving East Germany because communism was mid. So the Soviets built a whole wall to trap them. Literally a prison wall. 🧱🔒',
+    id: 'vus15-4', standardId: 'VUS.15', text: 'Place these Cold War events in order: 1) Fall of Berlin Wall, 2) Korean War, 3) Cuban Missile Crisis, 4) Vietnam War.',
+    options: ['2, 3, 4, 1', '3, 2, 1, 4', '2, 4, 3, 1', '1, 2, 3, 4'],
+    correctIndex: 0, errorCategory: 'sequence',
+    strategyTip: 'Korean War (1950-53) → Cuban Missile Crisis (1962) → Vietnam War (1964-75) → Berlin Wall falls (1989).',
+    genAlphaTip: 'Cold War timeline: Korea (\'50s) → Cuba almost nukes (\'62) → Vietnam (\'60s-70s) → Berlin Wall falls (\'89). The Cold War was a long saga. 🧊📅',
+    timelineData: [
+      { year: 1950, label: 'Korean War', highlight: true },
+      { year: 1962, label: 'Cuban Missile Crisis', highlight: true },
+      { year: 1964, label: 'Vietnam War', highlight: true },
+      { year: 1989, label: 'Berlin Wall Falls', highlight: true },
+    ],
   },
   {
-    id: 'vus15-5', standardId: 'VUS.15', text: 'The 1950 National Security Council document describing the need to counter the Soviet Union relates to —',
-    options: ['Cold War tension in Europe', 'Japanese invasion of China', 'creation of the state of Israel', 'creation of the Manhattan Project'],
-    correctIndex: 0, errorCategory: 'stimulus',
-    strategyTip: 'NSC-68 (1950) called for a massive military buildup to counter Soviet threats — the foundation of Cold War policy.',
-    genAlphaTip: 'This document was about countering the Soviets. Cold War tension was REAL in 1950. The US was like "we need to build up or we\'re cooked." 🥶',
-  },
-  {
-    id: 'vus15-6', standardId: 'VUS.15', text: 'Which president is most closely associated with the policy of massive retaliation?',
-    options: ['Dwight D. Eisenhower', 'John F. Kennedy', 'Lyndon Johnson', 'Richard Nixon'],
-    correctIndex: 0, errorCategory: 'memorization',
-    strategyTip: 'Eisenhower\'s "New Look" policy threatened massive nuclear retaliation against Soviet aggression.',
-    genAlphaTip: 'Eisenhower said "if you attack us, we\'re going nuclear." That\'s massive retaliation — the ultimate "try me" policy. Ike didn\'t play. ☢️',
-  },
-  {
-    id: 'vus15-7', standardId: 'VUS.15', text: 'The headline "Alger Hiss Sentenced to Prison" describes the increased fear of —',
-    options: ['communist infiltration', 'political corruption', 'organized crime', 'nuclear energy'],
-    correctIndex: 0, errorCategory: 'stimulus',
-    strategyTip: 'Hiss was convicted of perjury related to spying for the Soviets — fueling the Red Scare and McCarthyism.',
-    genAlphaTip: 'Alger Hiss got caught spying for the Soviets and everyone panicked. "Are there communists everywhere??" Red Scare energy was HIGH. 🔴😱',
-  },
-  {
-    id: 'vus15-8', standardId: 'VUS.15', text: 'The NATO was created primarily to —',
-    options: ['protect Western Europe from communism', 'encourage communist factions in China', 'install democratic governments in Africa', 'protect South America from invasion'],
-    correctIndex: 0, errorCategory: 'memorization',
-    strategyTip: 'NATO (1949) was a military alliance to defend Western Europe against potential Soviet aggression.',
-    genAlphaTip: 'NATO was the anti-Soviet squad. Western countries teamed up and said "attack one of us and you fight ALL of us." Ultimate alliance. 🤝🛡️',
-  },
-  {
-    id: 'vus15-9', standardId: 'VUS.15', text: 'Veterans of which war often faced public hostility when they returned?',
-    options: ['World War I', 'World War II', 'Korean War', 'Vietnam War'],
-    correctIndex: 3, errorCategory: 'memorization',
-    strategyTip: 'Vietnam veterans were often blamed for an unpopular war and received hostile treatment upon returning home.',
-    genAlphaTip: 'Vietnam vets came home and people treated them terribly. The war was so unpopular that soldiers got blamed for politicians\' decisions. Not fair at all. 😔',
-  },
-  {
-    id: 'vus15-10', standardId: 'VUS.15', text: 'Which president was in office during the Cold War?',
-    options: ['Woodrow Wilson', 'Franklin D. Roosevelt', 'John F. Kennedy', 'William Clinton'],
-    correctIndex: 2, errorCategory: 'memorization',
-    strategyTip: 'The Cold War lasted from ~1947-1991. JFK was president during key Cold War events like the Cuban Missile Crisis.',
-    genAlphaTip: 'JFK was THE Cold War president. Cuban Missile Crisis, Bay of Pigs, Space Race — all on his watch. Clutch (and tragic) presidency. 🇺🇸',
-  },
-  {
-    id: 'vus15-11', standardId: 'VUS.15', text: 'Which president normalized relations with Vietnam in 1995?',
-    options: ['Gerald Ford', 'James Carter Jr.', 'Ronald Reagan', 'William Clinton'],
-    correctIndex: 3, errorCategory: 'memorization',
-    strategyTip: 'Clinton announced normalization of relations with Vietnam on July 11, 1995, two decades after the war ended.',
-    genAlphaTip: 'Clinton said "it\'s been 20 years, let\'s be cool with Vietnam again." Normalization of relations in 1995. Moving on energy. 🤝',
+    id: 'vus15-5', standardId: 'VUS.15', text: 'NATO was established primarily to —',
+    options: ['promote free trade', 'provide collective security against Soviet aggression', 'rebuild European economies', 'settle colonial disputes'],
+    correctIndex: 1, errorCategory: 'memorization',
+    strategyTip: 'NATO (1949) was a military alliance where an attack on one member was an attack on all.',
+    genAlphaTip: 'NATO = the ultimate squad. Attack one member, you fight ALL of them. Made to stop the Soviet Union from expanding. Alliance energy. 🤝⚔️',
   },
 
   // ===== VUS.16 — Civil Rights Movement =====
   {
-    id: 'vus16-1', standardId: 'VUS.16', text: 'Which Supreme Court case declared "separate but equal" unconstitutional in public schools?',
-    options: ['Plessy v. Ferguson', 'Brown v. Board of Education', 'Marbury v. Madison', 'Miranda v. Arizona'],
+    id: 'vus16-1', standardId: 'VUS.16', text: 'The Supreme Court decision in Brown v. Board of Education declared that —',
+    options: ['separate but equal facilities were constitutional', 'racial segregation in public schools was unconstitutional', 'voting rights could not be denied based on race', 'affirmative action was required'],
     correctIndex: 1, errorCategory: 'memorization',
-    strategyTip: 'Brown v. Board (1954) overturned Plessy (1896). Know the pair!',
-    genAlphaTip: 'Brown v. Board said "separate but equal is NOT equal." Plessy said it was fine in 1896, Brown said "nah" in 1954. W decision. ⚖️✊',
+    strategyTip: 'Brown v. Board (1954) overturned Plessy v. Ferguson, ruling that "separate but equal" was inherently unequal.',
+    genAlphaTip: 'Brown v. Board said "separate is NOT equal" and struck down school segregation. One of the biggest Supreme Court W\'s ever. 🏫⚖️',
   },
   {
-    id: 'vus16-2', standardId: 'VUS.16', text: 'A photograph of Black students escorted by federal troops into a school while crowds protest depicts —',
-    options: ['Montgomery Bus Boycott', 'Little Rock Nine', 'March on Washington', 'Greensboro Sit-ins'],
-    correctIndex: 1, errorCategory: 'stimulus',
-    strategyTip: 'Federal troops + school integration = Little Rock Nine (1957). The soldiers enforced desegregation.',
-    genAlphaTip: 'Federal troops escorting Black students into school = Little Rock Nine. Eisenhower sent the military to make sure those 9 students could go to school. Iconic. 🏫✊',
+    id: 'vus16-2', standardId: 'VUS.16', text: 'Martin Luther King Jr.\'s approach to civil rights was based on the principle of —',
+    options: ['armed resistance', 'non-violent protest', 'economic boycotts only', 'legal action exclusively'],
+    correctIndex: 1, errorCategory: 'memorization',
+    strategyTip: 'MLK followed Gandhi\'s philosophy of non-violent civil disobedience to achieve social change.',
+    genAlphaTip: 'MLK\'s whole thing was non-violence. Peaceful protests, marches, and speeches. He changed the world without throwing a single punch. GOAT energy. 🕊️👑',
   },
   {
-    id: 'vus16-3', standardId: 'VUS.16', text: 'Which president signed the 1965 Voting Rights Act?',
-    options: ['Harry S Truman', 'Dwight D. Eisenhower', 'Richard M. Nixon', 'Lyndon B. Johnson'],
-    correctIndex: 3, errorCategory: 'memorization',
-    strategyTip: 'LBJ signed both the Civil Rights Act (1964) and the Voting Rights Act (1965).',
-    genAlphaTip: 'LBJ signed the Voting Rights Act. He pushed through BOTH the Civil Rights Act AND the Voting Rights Act. That\'s a legacy. ✍️',
+    id: 'vus16-3', standardId: 'VUS.16', text: 'The Civil Rights Act of 1964 primarily addressed —',
+    options: ['voting rights for women', 'discrimination in public accommodations and employment', 'Native American land claims', 'immigration quotas'],
+    correctIndex: 1, errorCategory: 'memorization',
+    strategyTip: 'The Civil Rights Act banned discrimination based on race, color, religion, sex, or national origin in public places and employment.',
+    genAlphaTip: 'The Civil Rights Act of 1964 = no more discrimination in jobs, restaurants, hotels, anywhere public. Huge W for equality. 🎉✊',
   },
   {
-    id: 'vus16-4', standardId: 'VUS.16', text: 'The practice of requiring voters to interpret the Constitution (as described by Fannie Lou Hamer) was outlawed by the —',
-    options: ['15th Amendment', 'Civil Rights Act of 1964', '19th Amendment', 'Voting Rights Act of 1965'],
-    correctIndex: 3, errorCategory: 'stimulus',
-    strategyTip: 'Literacy tests were used to prevent Black voters from registering. The Voting Rights Act of 1965 banned these practices.',
-    genAlphaTip: 'They made Black voters "interpret the Constitution" to register — basically an impossible test designed to fail them. The Voting Rights Act of 1965 shut that down. 🚫📝',
+    id: 'vus16-4', standardId: 'VUS.16', text: '"I have a dream that one day this nation will rise up and live out the true meaning of its creed." This quote is from —',
+    options: ['Frederick Douglass', 'Malcolm X', 'Martin Luther King Jr.', 'John F. Kennedy'],
+    correctIndex: 2, errorCategory: 'stimulus',
+    quote: 'I have a dream that one day this nation will rise up and live out the true meaning of its creed.',
+    quoteSource: 'Martin Luther King Jr., March on Washington (1963)',
+    strategyTip: 'MLK\'s "I Have a Dream" speech at the March on Washington (1963) is one of the most iconic speeches in American history.',
+    genAlphaTip: 'This is MLK\'s legendary "I Have a Dream" speech. March on Washington, 1963. One of the most iconic moments in American history. Goosebumps every time. 🎤✨',
   },
   {
-    id: 'vus16-5', standardId: 'VUS.16', text: 'Put these civil rights events in order: 1) Civil Rights Act, 2) Brown v. Board, 3) March on Washington, 4) Voting Rights Act.',
-    options: ['2, 3, 1, 4', '1, 2, 3, 4', '2, 1, 3, 4', '3, 2, 4, 1'],
+    id: 'vus16-5', standardId: 'VUS.16', text: 'Place these civil rights events in order: 1) Voting Rights Act, 2) Brown v. Board, 3) Montgomery Bus Boycott, 4) March on Washington.',
+    options: ['2, 3, 4, 1', '3, 2, 1, 4', '2, 4, 3, 1', '1, 2, 3, 4'],
     correctIndex: 0, errorCategory: 'sequence',
-    strategyTip: 'Brown (1954) → March on Washington (1963) → Civil Rights Act (1964) → Voting Rights Act (1965).',
-    genAlphaTip: 'Civil Rights speedrun: Brown v. Board (1954) → March on Washington (1963) → Civil Rights Act (1964) → Voting Rights Act (1965). Each one unlocked the next. 🔓',
+    strategyTip: 'Brown v. Board (1954) → Bus Boycott (1955) → March on Washington (1963) → Voting Rights Act (1965).',
+    genAlphaTip: 'Civil rights timeline: Brown v. Board (\'54) → Bus Boycott (\'55) → March on Washington (\'63) → Voting Rights Act (\'65). Each one built on the last. 📅✊',
     timelineData: [
       { year: 1954, label: 'Brown v. Board', highlight: true },
+      { year: 1955, label: 'Bus Boycott', highlight: true },
       { year: 1963, label: 'March on Washington', highlight: true },
-      { year: 1964, label: 'Civil Rights Act', highlight: true },
       { year: 1965, label: 'Voting Rights Act', highlight: true },
     ],
   },
 
   // ===== VUS.17 — Contemporary America =====
   {
-    id: 'vus17-1', standardId: 'VUS.17', text: 'An excerpt describing measures "to deter and punish terrorist acts" describes the —',
-    options: ['Patriot Act', 'Strategic Defense Initiative', 'United Nations Participation Act', 'Interstate Commerce Commission'],
-    correctIndex: 0, errorCategory: 'stimulus',
-    strategyTip: 'The Patriot Act (2001) expanded law enforcement powers to combat terrorism after 9/11.',
-    genAlphaTip: 'The Patriot Act was the government\'s response to 9/11. More surveillance, more law enforcement power. Controversial but real. 🔍',
-  },
-  {
-    id: 'vus17-2', standardId: 'VUS.17', text: 'One push factor for immigration is that the native country has a —',
-    options: ['quality education system', 'lack of family connections', 'diverse religious history', 'lack of employment opportunities'],
-    correctIndex: 3, errorCategory: 'memorization',
-    strategyTip: 'Push factors drive people away from their home country — no jobs, poverty, war, persecution.',
-    genAlphaTip: 'Push factors = reasons to LEAVE. No jobs? That\'s a push factor. People come to the US for better opportunities. Makes total sense. 🌎→🇺🇸',
-  },
-  {
-    id: 'vus17-3', standardId: 'VUS.17', text: 'In recent years, most employers now expect their employees to have —',
-    options: ['loyalty to their company', 'computer skills', 'ability to operate heavy machines', 'advanced scientific knowledge'],
+    id: 'vus17-1', standardId: 'VUS.17', text: 'The September 11, 2001 attacks led directly to the —',
+    options: ['Gulf War', 'War on Terror', 'Cold War', 'Vietnam War'],
     correctIndex: 1, errorCategory: 'memorization',
-    strategyTip: 'The digital revolution means computer literacy is now a basic job requirement across most industries.',
-    genAlphaTip: 'Computer skills are basically mandatory now. If you can\'t use tech, you\'re behind. Digital literacy is the new baseline. 💻',
+    strategyTip: '9/11 prompted the US to launch the War on Terror, including invasions of Afghanistan and Iraq.',
+    genAlphaTip: '9/11 changed everything. The War on Terror started right after — Afghanistan, then Iraq. The world literally shifted that day. 🌍',
   },
   {
-    id: 'vus17-4', standardId: 'VUS.17', text: 'How has the Internet affected rural Americans?',
-    options: ['By attracting more medical professionals', 'By creating more blue-collar jobs', 'By providing better access to information', 'By lowering the cost of housing'],
+    id: 'vus17-2', standardId: 'VUS.17', text: 'Which technology has most transformed communication in the 21st century?',
+    options: ['Television', 'Radio', 'The Internet', 'Newspapers'],
     correctIndex: 2, errorCategory: 'memorization',
-    strategyTip: 'The Internet broke down geographic barriers, giving rural Americans access to the same information as urban areas.',
-    genAlphaTip: 'The Internet gave rural America access to everything. Information, shopping, education — the digital divide is closing. WiFi is the great equalizer. 📱🌾',
+    strategyTip: 'The Internet revolutionized how people communicate, access information, and conduct business.',
+    genAlphaTip: 'The Internet changed EVERYTHING. Social media, streaming, online shopping — we literally live online now. The biggest tech shift ever. 📱💻',
   },
   {
-    id: 'vus17-5', standardId: 'VUS.17', text: 'Which regions are the source of most recent immigration to the United States?',
-    options: ['Latin America and Africa', 'Asia and Latin America', 'Western Europe and Africa', 'Asia and Southern Europe'],
+    id: 'vus17-3', standardId: 'VUS.17', text: 'Globalization has most significantly affected the US economy by —',
+    options: ['reducing international trade', 'increasing economic interdependence with other nations', 'eliminating competition', 'ending immigration'],
     correctIndex: 1, errorCategory: 'memorization',
-    strategyTip: 'Since the 1960s, immigration has shifted from Europe to primarily Asia and Latin America.',
-    genAlphaTip: 'Asia and Latin America are where most immigrants come from now. The immigration pattern totally shifted from Europe. Diversity is America\'s superpower. 🌎',
-  },
-  {
-    id: 'vus17-6', standardId: 'VUS.17', text: 'Modern American schools adapted to serve new immigrants by —',
-    options: ['limiting vocational programs', 'offering bilingual education', 'offering extracurricular activities', 'requiring physical education'],
-    correctIndex: 1, errorCategory: 'memorization',
-    strategyTip: 'Bilingual education programs help immigrant students learn while maintaining their native language.',
-    genAlphaTip: 'Schools started teaching in multiple languages to help immigrant students. Bilingual education = meeting students where they are. Smart move. 🗣️📚',
-  },
-  {
-    id: 'vus17-7', standardId: 'VUS.17', text: 'A 1991 headline reading "War Begins! Hundreds of planes begin bombing missions" describes a conflict in the —',
-    options: ['Afghanistan border', 'Indochinese Peninsula', 'Former Yugoslavia', 'Persian Gulf'],
-    correctIndex: 3, errorCategory: 'stimulus',
-    strategyTip: 'January 17, 1991 = the start of the Gulf War (Operation Desert Storm) to liberate Kuwait from Iraq.',
-    genAlphaTip: 'January 1991 = Gulf War. The US-led coalition started bombing Iraq to free Kuwait. Operation Desert Storm was the name. ✈️💥',
-  },
-  {
-    id: 'vus17-8', standardId: 'VUS.17', text: 'President Bush\'s actions on September 12, 2001, calling leaders of multiple countries, describes —',
-    options: ['Independent investigations', 'Diplomatic relations', 'Economic sanctions', 'Strategic attacks'],
-    correctIndex: 1, errorCategory: 'stimulus',
-    strategyTip: 'Building an international coalition through phone calls to world leaders = diplomatic relations.',
-    genAlphaTip: 'Bush called world leaders to build a coalition against terrorism. That\'s diplomacy — getting allies together after 9/11. Squad up moment. 📞🌍',
-  },
-  {
-    id: 'vus17-9', standardId: 'VUS.17', text: 'In the late 1900s, which innovation led to a better-informed rural population through televised news?',
-    options: ['Radio', 'Newspaper', 'Satellite dish', 'Compact disc'],
-    correctIndex: 2, errorCategory: 'stimulus',
-    strategyTip: 'Satellite dishes brought TV signals to remote rural areas that couldn\'t get cable.',
-    genAlphaTip: 'Satellite dishes = TV in the middle of nowhere. Rural Americans finally got news and entertainment. Technology reaching everyone. 📡📺',
-  },
-  {
-    id: 'vus17-10', standardId: 'VUS.17', text: 'Data showing schools narrow the technological gap caused by income differences suggests that —',
-    options: ['Family income has little bearing on computer access', 'Education improves with higher income', 'Schools narrow the technological gap caused by income', 'There are more children in higher-income families'],
-    correctIndex: 2, errorCategory: 'stimulus',
-    strategyTip: 'When school access to computers is nearly equal across income levels, schools are bridging the digital divide.',
-    genAlphaTip: 'Rich kids have computers at home, but schools give ALL kids access. Schools = the great equalizer for technology. Closing the gap. 💻🏫',
-  },
-  {
-    id: 'vus17-11', standardId: 'VUS.17', text: 'The Selective Service System during WWII was responsible for —',
-    options: ['drafting military personnel', 'rationing manufactured goods', 'increasing industrial productivity', 'replacing factory workers'],
-    correctIndex: 0, errorCategory: 'memorization',
-    strategyTip: 'The Selective Service System managed the military draft — selecting citizens for compulsory military service.',
-    genAlphaTip: 'Selective Service = the draft. They decided who had to go fight. Getting your draft letter was probably the worst mail day ever. ✉️⚔️',
-  },
-  {
-    id: 'vus17-12', standardId: 'VUS.17', text: 'Which effect did US participation in WWII have on the home front?',
-    options: ['Increase in volunteers for the war effort', 'End of racial segregation in the South', 'Decline in farm income due to rationing', 'Growth of isolationism in the Midwest'],
-    correctIndex: 0, errorCategory: 'memorization',
-    strategyTip: 'WWII saw a massive increase in volunteerism — people bought war bonds, rationed goods, and volunteered.',
-    genAlphaTip: 'Everyone at home stepped up during WWII. Volunteers, war bonds, Victory Gardens — the whole country was in it together. Community W. 🏠🇺🇸',
+    strategyTip: 'Globalization connects economies worldwide through trade, investment, and technology.',
+    genAlphaTip: 'Globalization = the whole world\'s economies are connected. What happens in China affects America and vice versa. We\'re all linked now. 🌐',
   },
 ];
+
+// Generate the full question bank with 5 versions per template (VUS.1 excluded)
+export const questionBank: Question[] = generateAllVariants(masterQuestions as Question[]);
 
 // Generate additional practice questions for the adaptive feedback loop
 export function generatePracticeQuestions(
   failedQuestion: Question,
   allQuestions: Question[]
 ): Question[] {
-  // Find questions with the same error category and similar standard
+  // Find questions with the same error category and similar standard (different templates)
   const relatedQuestions = allQuestions.filter(
-    q => q.id !== failedQuestion.id && q.errorCategory === failedQuestion.errorCategory
+    q => q.templateId !== failedQuestion.templateId && q.errorCategory === failedQuestion.errorCategory
   );
-
-  // Also include questions from the same standard
   const sameStandard = allQuestions.filter(
-    q => q.id !== failedQuestion.id && q.standardId === failedQuestion.standardId
+    q => q.templateId !== failedQuestion.templateId && q.standardId === failedQuestion.standardId
   );
 
-  // Combine and deduplicate, prioritizing same standard + same error type
   const combined = [...new Map(
-    [...sameStandard, ...relatedQuestions].map(q => [q.id, q])
+    [...sameStandard, ...relatedQuestions].map(q => [q.templateId, q])
   ).values()];
 
   return combined.slice(0, 5);
 }
 
-// Get questions for a specific unit (standard)
+// Get questions for a specific unit using version selection
 export function getUnitQuestions(standardId: string): Question[] {
-  return questionBank.filter(q => q.standardId === standardId);
+  return questionBank.filter(q => q.standardId === standardId && q.standardId !== 'VUS.1');
 }
 
-// Get questions for a Mock SOL (65 questions across all standards)
-export function getMockSOLQuestions(): Question[] {
-  const shuffled = [...questionBank].sort(() => Math.random() - 0.5);
-  // Try to get balanced representation across standards
+// Get questions for a Mock SOL (65 questions across VUS.2-VUS.17, one version per template)
+export function getMockSOLQuestions(usedVersions: Record<string, number[]> = {}): Question[] {
+  const nonUnit1 = questionBank.filter(q => q.standardId !== 'VUS.1');
+  const selected = selectVersionsForQuiz(nonUnit1, usedVersions);
+
+  // Balance across standards
   const standardGroups: Record<string, Question[]> = {};
-  shuffled.forEach(q => {
+  selected.forEach(q => {
     if (!standardGroups[q.standardId]) standardGroups[q.standardId] = [];
     standardGroups[q.standardId].push(q);
   });
 
   const result: Question[] = [];
   const standards = Object.keys(standardGroups);
-
-  // First pass: take up to 4 from each standard
   standards.forEach(sid => {
-    const qs = standardGroups[sid];
-    result.push(...qs.slice(0, 4));
+    result.push(...standardGroups[sid].slice(0, 5));
   });
 
-  // Fill remaining spots
-  const remaining = shuffled.filter(q => !result.includes(q));
+  const remaining = selected.filter(q => !result.includes(q));
   const needed = Math.min(65, result.length + remaining.length) - result.length;
   result.push(...remaining.slice(0, needed));
 
   return result.slice(0, 65).sort(() => Math.random() - 0.5);
 }
 
-// Get 15 questions for unit mastery
-export function getUnitMasteryQuestions(standardId: string): Question[] {
-  const unitQs = getUnitQuestions(standardId);
-  if (unitQs.length >= 15) {
-    return [...unitQs].sort(() => Math.random() - 0.5).slice(0, 15);
+// Get 15 questions for unit mastery (one version per template, preferring unseen)
+export function getUnitMasteryQuestions(standardId: string, usedVersions: Record<string, number[]> = {}): Question[] {
+  if (standardId === 'VUS.1') return [];
+  const unitQs = questionBank.filter(q => q.standardId === standardId);
+  const selected = selectVersionsForQuiz(unitQs, usedVersions);
+
+  if (selected.length >= 15) {
+    return [...selected].sort(() => Math.random() - 0.5).slice(0, 15);
   }
-  // If not enough, supplement with related standards
-  const standard = standardId;
-  const related = questionBank.filter(q => q.standardId !== standard);
-  const shuffledRelated = [...related].sort(() => Math.random() - 0.5);
-  const all = [...unitQs, ...shuffledRelated];
+  // Supplement with related standards
+  const related = questionBank.filter(q => q.standardId !== standardId && q.standardId !== 'VUS.1');
+  const relatedSelected = selectVersionsForQuiz(related, usedVersions);
+  const all = [...selected, ...relatedSelected];
   return all.slice(0, 15);
 }

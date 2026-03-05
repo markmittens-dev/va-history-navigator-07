@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, TrendingDown, AlertTriangle, CheckCircle2, Download, BookOpen, Lightbulb } from 'lucide-react';
+import { LogOut, TrendingDown, AlertTriangle, CheckCircle2, Download, BookOpen, Lightbulb, RotateCcw } from 'lucide-react';
 import { useAppState } from '@/context/AppContext';
 import { solStandards } from '@/data/standards';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 
-type TabId = 'heatmap' | 'vocab' | 'hints';
+type TabId = 'heatmap' | 'vocab' | 'hints' | 'retakes';
 
 const TeacherDashboard = () => {
-  const { classCode, classData, logout } = useAppState();
+  const { classCode, classData, retakeHistory, logout } = useAppState();
   const navigate = useNavigate();
   const data = classData[classCode];
   const [activeTab, setActiveTab] = useState<TabId>('heatmap');
+
+  // Filter out VUS.1
+  const filteredStandards = solStandards.filter(s => s.id !== 'VUS.1');
 
   if (!data) {
     return (
@@ -23,7 +26,7 @@ const TeacherDashboard = () => {
     );
   }
 
-  const standardsWithData = solStandards.map(std => {
+  const standardsWithData = filteredStandards.map(std => {
     const perf = data.standards[std.id];
     const pct = perf && perf.total > 0 ? Math.round((perf.correct / perf.total) * 100) : null;
     return { ...std, perf, pct };
@@ -33,12 +36,10 @@ const TeacherDashboard = () => {
   const improving = standardsWithData.filter(s => s.pct !== null && s.pct >= 50 && s.pct < 75).length;
   const mastered = standardsWithData.filter(s => s.pct !== null && s.pct >= 75).length;
 
-  // Vocab gap analysis
   const vocabCounts: Record<string, number> = {};
   data.vocabClicks.forEach(c => { vocabCounts[c.term] = (vocabCounts[c.term] || 0) + 1; });
   const sortedVocab = Object.entries(vocabCounts).sort((a, b) => b[1] - a[1]);
 
-  // Hints analysis
   const sortedHints = Object.entries(data.hintsByStudent).sort((a, b) => b[1] - a[1]);
 
   const getHeatColor = (pct: number | null) => {
@@ -72,6 +73,18 @@ const TeacherDashboard = () => {
     rows.push(['Hints Used by Remediation ID']);
     rows.push(['Remediation ID', 'Hints']);
     sortedHints.forEach(([id, count]) => rows.push([id, String(count)]));
+    rows.push([]);
+    rows.push(['Retake Analysis']);
+    rows.push(['Remediation ID', 'Standard', 'Retake #', 'Score %', 'Memory %', 'Sequence %', 'Stimulus %']);
+    Object.entries(retakeHistory).forEach(([id, records]) => {
+      records.forEach(r => {
+        const scorePct = r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0;
+        const memPct = r.byCategory.memorization ? Math.round((r.byCategory.memorization.correct / r.byCategory.memorization.total) * 100) : 0;
+        const seqPct = r.byCategory.sequence ? Math.round((r.byCategory.sequence.correct / r.byCategory.sequence.total) * 100) : 0;
+        const stimPct = r.byCategory.stimulus ? Math.round((r.byCategory.stimulus.correct / r.byCategory.stimulus.total) * 100) : 0;
+        rows.push([id, r.standardId, String(r.retakeNumber), String(scorePct), String(memPct), String(seqPct), String(stimPct)]);
+      });
+    });
 
     const csv = rows.map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -85,8 +98,9 @@ const TeacherDashboard = () => {
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'heatmap', label: 'Standards', icon: <CheckCircle2 className="h-4 w-4" /> },
-    { id: 'vocab', label: 'Vocab Gaps', icon: <BookOpen className="h-4 w-4" /> },
-    { id: 'hints', label: 'Hint Usage', icon: <Lightbulb className="h-4 w-4" /> },
+    { id: 'vocab', label: 'Vocab', icon: <BookOpen className="h-4 w-4" /> },
+    { id: 'hints', label: 'Hints', icon: <Lightbulb className="h-4 w-4" /> },
+    { id: 'retakes', label: 'Retakes', icon: <RotateCcw className="h-4 w-4" /> },
   ];
 
   return (
@@ -94,8 +108,8 @@ const TeacherDashboard = () => {
       <header className="sticky top-0 z-10 border-b border-border bg-primary px-4 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div>
-            <h1 className="font-display text-lg font-bold text-primary-foreground">Teacher Dashboard</h1>
-            <p className="text-xs text-primary-foreground/70">Class Code: {classCode} · {data.totalStudents} students</p>
+            <h1 className="font-display text-lg font-bold text-primary-foreground">Perfect Practice — Teacher Dashboard</h1>
+            <p className="text-xs text-primary-foreground/70">Class Code: {classCode} · {data.totalStudents} students · VUS.2–17</p>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={exportCSV} className="text-primary-foreground/70 hover:text-primary-foreground" title="Export CSV">
@@ -141,8 +155,8 @@ const TeacherDashboard = () => {
         {activeTab === 'heatmap' && (
           <>
             <div>
-              <h2 className="font-display text-lg font-bold text-foreground mb-3">Skill Heatmap</h2>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <h2 className="font-display text-lg font-bold text-foreground mb-3">Standard Mastery Heatmap (VUS.2–17)</h2>
+              <div className="grid grid-cols-4 gap-2">
                 {standardsWithData.map((std, i) => (
                   <motion.div key={std.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }} className={`rounded-xl p-3 text-center ${getHeatColor(std.pct)}`}>
                     <p className={`text-xs font-bold ${getTextColor(std.pct)}`}>{std.id}</p>
@@ -194,8 +208,8 @@ const TeacherDashboard = () => {
         {/* Vocab Gaps Tab */}
         {activeTab === 'vocab' && (
           <div>
-            <h2 className="font-display text-lg font-bold text-foreground mb-3">Vocabulary Gap Report</h2>
-            <p className="text-sm text-muted-foreground mb-4">Most-clicked vocabulary terms — these words are blocking student comprehension.</p>
+            <h2 className="font-display text-lg font-bold text-foreground mb-3">Vocabulary Audit</h2>
+            <p className="text-sm text-muted-foreground mb-4">Most-clicked terms — these words are blocking student comprehension of history content.</p>
             {sortedVocab.length === 0 ? (
               <p className="text-sm text-muted-foreground">No vocabulary data yet.</p>
             ) : (
@@ -252,7 +266,61 @@ const TeacherDashboard = () => {
           </div>
         )}
 
-        {/* Export button */}
+        {/* Retake Analysis Tab */}
+        {activeTab === 'retakes' && (
+          <div>
+            <h2 className="font-display text-lg font-bold text-foreground mb-3">Retake Analysis</h2>
+            <p className="text-sm text-muted-foreground mb-4">Track improvement across the 5 question versions. Are students growing or stuck on a specific cognitive skill?</p>
+            {Object.keys(retakeHistory).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No retake data yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {Object.entries(retakeHistory).map(([remId, records]) => (
+                  <motion.div key={remId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-bold text-foreground">{remId}</span>
+                      <span className="text-xs text-muted-foreground">{records.length} attempt{records.length > 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {records.map((r, i) => {
+                        const scorePct = r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0;
+                        const improving = i > 0 && scorePct > (records[i - 1].total > 0 ? Math.round((records[i - 1].correct / records[i - 1].total) * 100) : 0);
+                        const declining = i > 0 && scorePct < (records[i - 1].total > 0 ? Math.round((records[i - 1].correct / records[i - 1].total) * 100) : 0);
+                        return (
+                          <div key={i} className="rounded-lg bg-muted p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-foreground">v{r.retakeNumber}</span>
+                                <span className="text-xs text-muted-foreground">{r.standardId}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className={`text-sm font-bold ${scorePct >= 70 ? 'text-secondary' : 'text-destructive'}`}>{scorePct}%</span>
+                                {improving && <span className="text-xs text-secondary">↑</span>}
+                                {declining && <span className="text-xs text-destructive">↓</span>}
+                              </div>
+                            </div>
+                            <Progress value={scorePct} className="h-1.5 mb-2" />
+                            <div className="grid grid-cols-3 gap-1 text-center">
+                              {Object.entries(r.byCategory).map(([cat, data]) => (
+                                <div key={cat} className="text-[10px]">
+                                  <span className="text-muted-foreground">{cat === 'memorization' ? '📝' : cat === 'sequence' ? '🔢' : '🖼️'}</span>
+                                  <span className={`ml-1 font-bold ${data.total > 0 && Math.round((data.correct / data.total) * 100) >= 70 ? 'text-secondary' : 'text-destructive'}`}>
+                                    {data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0}%
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <Button onClick={exportCSV} variant="outline" className="w-full gap-2">
           <Download className="h-4 w-4" /> Export CSV Report
         </Button>

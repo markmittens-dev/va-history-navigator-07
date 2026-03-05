@@ -16,13 +16,16 @@ const LoginPage = () => {
   const [classCode, setClassCode] = useState('');
   const [error, setError] = useState('');
   const [quizMode, setQuizMode] = useState<QuizMode>('mock-sol');
-  const [selectedUnit, setSelectedUnit] = useState('VUS.1');
+  const [selectedUnit, setSelectedUnit] = useState('VUS.2');
   const [coachPersonality, setCoachPersonality] = useState<CoachPersonality>('historian');
   const { loginAsStudent, loginAsTeacher } = useAppState();
   const navigate = useNavigate();
 
+  // Filter out VUS.1
+  const availableStandards = solStandards.filter(s => s.id !== 'VUS.1');
+
   const handleStudentCredentials = () => {
-    if (!remediationId.trim()) { setError('Enter your Remediation ID (e.g., VA-01)'); return; }
+    if (!remediationId.trim()) { setError('Enter your Remediation ID (e.g., PP-101)'); return; }
     if (!/^\d{6}$/.test(classCode)) { setError('Enter a valid 6-digit class code'); return; }
     setStep('setup');
   };
@@ -46,8 +49,8 @@ const LoginPage = () => {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
             <BookOpen className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-foreground">VA History SOL</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Adaptive Learning Engine</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">Perfect Practice</h1>
+          <p className="mt-1 text-sm text-muted-foreground">VA US/VA History SOL · Units 2–17</p>
         </div>
 
         {mode === 'select' && (
@@ -65,7 +68,7 @@ const LoginPage = () => {
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">Remediation ID</label>
-              <Input placeholder="e.g., VA-01" value={remediationId} onChange={e => { setRemediationId(e.target.value); setError(''); }} maxLength={20} className="h-12" />
+              <Input placeholder="e.g., PP-101" value={remediationId} onChange={e => { setRemediationId(e.target.value); setError(''); }} maxLength={20} className="h-12" />
               <p className="mt-1 text-xs text-muted-foreground">Your teacher will give you this ID. No personal info needed.</p>
             </div>
             <div>
@@ -100,11 +103,11 @@ const LoginPage = () => {
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => setQuizMode('unit-mastery')} className={`rounded-xl border-2 p-3 text-left text-sm transition-all ${quizMode === 'unit-mastery' ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}>
                   <p className="font-semibold text-foreground">Unit Mastery</p>
-                  <p className="text-xs text-muted-foreground">15 questions per unit</p>
+                  <p className="text-xs text-muted-foreground">15 Qs · 5 versions</p>
                 </button>
                 <button onClick={() => setQuizMode('mock-sol')} className={`rounded-xl border-2 p-3 text-left text-sm transition-all ${quizMode === 'mock-sol' ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}>
                   <p className="font-semibold text-foreground">Mock SOL</p>
-                  <p className="text-xs text-muted-foreground">65 questions, full test</p>
+                  <p className="text-xs text-muted-foreground">65 Qs · full test</p>
                 </button>
               </div>
             </div>
@@ -113,7 +116,7 @@ const LoginPage = () => {
               <div>
                 <label className="mb-2 block text-sm font-semibold text-foreground">Select Unit</label>
                 <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-border bg-card p-2">
-                  {solStandards.map(std => (
+                  {availableStandards.map(std => (
                     <button key={std.id} onClick={() => setSelectedUnit(std.id)} className={`w-full rounded-lg p-2.5 text-left text-sm transition-all ${selectedUnit === std.id ? 'bg-primary/10 border border-primary' : 'hover:bg-muted'}`}>
                       <span className="font-semibold text-foreground">{std.id}</span>
                       <span className="ml-2 text-xs text-muted-foreground">{std.title}</span>

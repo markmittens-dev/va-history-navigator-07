@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, ArrowRight, ArrowLeft, LogOut, Lightbulb, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ const errorCategoryLabels: Record<ErrorCategory, string> = {
 };
 
 const AssessmentPage = () => {
-  const { session, recordAnswer, logout, nickname, getStandardPerformance, incrementHints } = useAppState();
+  const { session, recordAnswer, logout, nickname, getStandardPerformance, incrementHints, trackVersionUsed } = useAppState();
   const navigate = useNavigate();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -33,10 +33,11 @@ const AssessmentPage = () => {
   const [history, setHistory] = useState<number[]>([]);
 
   const questions = useMemo(() => {
-    if (!session) return questionBank;
-    if (session.quizMode === 'mock-sol') return getMockSOLQuestions();
-    if (session.quizMode === 'unit-mastery' && session.selectedUnit) return getUnitMasteryQuestions(session.selectedUnit);
-    return questionBank;
+    if (!session) return [];
+    const usedVersions = session.usedTemplateVersions;
+    if (session.quizMode === 'mock-sol') return getMockSOLQuestions(usedVersions);
+    if (session.quizMode === 'unit-mastery' && session.selectedUnit) return getUnitMasteryQuestions(session.selectedUnit, usedVersions);
+    return [];
   }, [session?.quizMode, session?.selectedUnit]);
 
   const isGenAlpha = session?.coachPersonality === 'gen-alpha';
@@ -44,6 +45,13 @@ const AssessmentPage = () => {
   const activeQuestions = feedbackMode ? feedbackQuestions : questions;
   const activeIndex = feedbackMode ? feedbackIndex : currentIndex;
   const currentQuestion = activeQuestions[activeIndex];
+
+  // Track version usage
+  useEffect(() => {
+    if (currentQuestion) {
+      trackVersionUsed(currentQuestion.templateId, currentQuestion.version);
+    }
+  }, [currentQuestion?.id]);
 
   if (!session) { navigate('/'); return null; }
 
@@ -118,7 +126,6 @@ const AssessmentPage = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur-sm px-4 py-3">
         <div className="mx-auto flex max-w-lg items-center justify-between">
           <div className="flex items-center gap-3">
@@ -130,6 +137,7 @@ const AssessmentPage = () => {
             <div>
               <p className="text-xs text-muted-foreground">
                 {feedbackMode ? '🔄 Practice Mode' : `Q ${currentIndex + 1}/${questions.length}`}
+                {currentQuestion.version > 1 && <span className="ml-1 text-primary">v{currentQuestion.version}</span>}
                 {isGenAlpha && ' 🔥'}
               </p>
               <Progress value={progressPct} className="mt-1 h-1.5 w-32" />
@@ -145,36 +153,28 @@ const AssessmentPage = () => {
         </div>
       </header>
 
-      {/* Question area */}
       <main className="flex-1 px-4 py-6">
         <div className="mx-auto max-w-lg">
           <AnimatePresence mode="wait">
             <motion.div key={currentQuestion.id} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
-              {/* Standard badge */}
               <div className="mb-4 flex items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{currentQuestion.standardId}</span>
                 <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{errorCategoryLabels[currentQuestion.errorCategory]}</span>
               </div>
 
-              {/* Newspaper clipping for headline questions */}
               {currentQuestion.headline && <NewspaperClipping headline={currentQuestion.headline} />}
-
-              {/* Quote attribution */}
               {currentQuestion.quote && currentQuestion.quoteSource && (
                 <QuoteAttribution quote={currentQuestion.quote} source={currentQuestion.quoteSource} />
               )}
 
-              {/* Question text with vocab highlighting */}
               <h2 className="font-display text-lg font-semibold text-foreground leading-snug mb-5">
                 <VocabHighlighter text={currentQuestion.text} />
               </h2>
 
-              {/* Timeline for sequence questions */}
               {currentQuestion.errorCategory === 'sequence' && currentQuestion.timelineData && showResult && (
                 <Timeline events={currentQuestion.timelineData} />
               )}
 
-              {/* Options */}
               <div className="space-y-2.5">
                 {currentQuestion.options.map((option, i) => {
                   let optionStyle = 'bg-card border-border hover:border-primary/40';
@@ -197,13 +197,12 @@ const AssessmentPage = () => {
                 })}
               </div>
 
-              {/* Strategy tip */}
               {showStrategy && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-5 rounded-xl border-2 border-accent bg-accent/10 p-4">
                   <div className="flex items-start gap-2">
                     <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{isGenAlpha ? 'Coach Says 🎤' : 'Strategy Tip'}</p>
+                      <p className="text-sm font-semibold text-foreground">{isGenAlpha ? 'Coach Says 🎤' : 'Pattern Tip'}</p>
                       <p className="mt-1 text-sm text-muted-foreground">{tipText}</p>
                     </div>
                   </div>
@@ -214,7 +213,6 @@ const AssessmentPage = () => {
         </div>
       </main>
 
-      {/* Bottom action */}
       <div className="sticky bottom-0 border-t border-border bg-card/80 backdrop-blur-sm px-4 py-4">
         <div className="mx-auto max-w-lg">
           {!showResult ? (
@@ -233,7 +231,6 @@ const AssessmentPage = () => {
   );
 };
 
-// Extracted results screen component
 function ResultsScreen({ session, nickname, isGenAlpha, getStandardPerformance, onDone }: {
   session: NonNullable<ReturnType<typeof import('@/context/AppContext').useAppState>['session']>;
   nickname: string; isGenAlpha: boolean;
@@ -262,8 +259,9 @@ function ResultsScreen({ session, nickname, isGenAlpha, getStandardPerformance, 
             </span>
           )}
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">Retake #{session.retakeNumber} · Each retake serves fresh question versions</p>
         <div className="mt-6 space-y-2">
-          {solStandards.filter(s => session.answers.some(a => a.standardId === s.id)).map(std => {
+          {solStandards.filter(s => s.id !== 'VUS.1' && session.answers.some(a => a.standardId === s.id)).map(std => {
             const perf = getStandardPerformance(std.id);
             const p = perf.total > 0 ? Math.round((perf.correct / perf.total) * 100) : 0;
             return (
