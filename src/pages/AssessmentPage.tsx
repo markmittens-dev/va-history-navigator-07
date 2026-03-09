@@ -1,17 +1,19 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, ArrowRight, ArrowLeft, LogOut, Lightbulb, BarChart3 } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowRight, ArrowLeft, LogOut, Lightbulb, BarChart3, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppState } from '@/context/AppContext';
 import { questionBank, generatePracticeQuestions, getMockSOLQuestions, getUnitMasteryQuestions } from '@/data/questions';
 import { solStandards } from '@/data/standards';
-import { Question, ErrorCategory } from '@/types/sol';
+import { Question, ErrorCategory, VERSION_XP, VERSION_FORMAT_LABELS } from '@/types/sol';
 import { useNavigate } from 'react-router-dom';
 import { Progress } from '@/components/ui/progress';
 import Timeline from '@/components/Timeline';
 import VocabHighlighter from '@/components/VocabHighlighter';
 import NewspaperClipping from '@/components/NewspaperClipping';
 import QuoteAttribution from '@/components/QuoteAttribution';
+import ImageDescription from '@/components/ImageDescription';
+import DiagramBox from '@/components/DiagramBox';
 
 const errorCategoryLabels: Record<ErrorCategory, string> = {
   memorization: '📝 Memorization',
@@ -31,14 +33,15 @@ const AssessmentPage = () => {
   const [feedbackIndex, setFeedbackIndex] = useState(0);
   const [showStrategy, setShowStrategy] = useState(false);
   const [history, setHistory] = useState<number[]>([]);
+  const [earnedXP, setEarnedXP] = useState(0);
 
   const questions = useMemo(() => {
     if (!session) return [];
-    const usedVersions = session.usedTemplateVersions;
-    if (session.quizMode === 'mock-sol') return getMockSOLQuestions(usedVersions);
-    if (session.quizMode === 'unit-mastery' && session.selectedUnit) return getUnitMasteryQuestions(session.selectedUnit, usedVersions);
+    const retake = session.retakeNumber;
+    if (session.quizMode === 'mock-sol') return getMockSOLQuestions(session.usedTemplateVersions, retake);
+    if (session.quizMode === 'unit-mastery' && session.selectedUnit) return getUnitMasteryQuestions(session.selectedUnit, session.usedTemplateVersions, retake);
     return [];
-  }, [session?.quizMode, session?.selectedUnit]);
+  }, [session?.quizMode, session?.selectedUnit, session?.retakeNumber]);
 
   const isGenAlpha = session?.coachPersonality === 'gen-alpha';
 
@@ -46,7 +49,6 @@ const AssessmentPage = () => {
   const activeIndex = feedbackMode ? feedbackIndex : currentIndex;
   const currentQuestion = activeQuestions[activeIndex];
 
-  // Track version usage
   useEffect(() => {
     if (currentQuestion) {
       trackVersionUsed(currentQuestion.templateId, currentQuestion.version);
@@ -64,8 +66,11 @@ const AssessmentPage = () => {
   const handleSubmit = () => {
     if (selectedOption === null) return;
     const correct = selectedOption === currentQuestion.correctIndex;
-    recordAnswer({ questionId: currentQuestion.id, standardId: currentQuestion.standardId, selectedIndex: selectedOption, correct, errorCategory: currentQuestion.errorCategory, timestamp: Date.now() });
+    const xp = correct ? VERSION_XP[currentQuestion.versionFormat] : 0;
+    recordAnswer({ questionId: currentQuestion.id, standardId: currentQuestion.standardId, selectedIndex: selectedOption, correct, errorCategory: currentQuestion.errorCategory, timestamp: Date.now(), xpEarned: xp });
     setShowResult(true);
+    if (correct) setEarnedXP(xp);
+    else { setEarnedXP(0); }
     if (!correct) {
       setShowStrategy(true);
       incrementHints();
@@ -101,6 +106,7 @@ const AssessmentPage = () => {
     setSelectedOption(null);
     setShowResult(false);
     setShowStrategy(false);
+    setEarnedXP(0);
   };
 
   const handleBack = () => {
@@ -115,6 +121,7 @@ const AssessmentPage = () => {
     setSelectedOption(null);
     setShowResult(false);
     setShowStrategy(false);
+    setEarnedXP(0);
   };
 
   const canGoBack = feedbackMode ? feedbackIndex > 0 : history.length > 0;
@@ -123,6 +130,8 @@ const AssessmentPage = () => {
     : Math.round(((currentIndex + 1) / questions.length) * 100);
 
   const tipText = isGenAlpha ? currentQuestion.genAlphaTip : currentQuestion.strategyTip;
+  const formatLabel = VERSION_FORMAT_LABELS[currentQuestion.versionFormat];
+  const xpValue = VERSION_XP[currentQuestion.versionFormat];
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -137,15 +146,19 @@ const AssessmentPage = () => {
             <div>
               <p className="text-xs text-muted-foreground">
                 {feedbackMode ? '🔄 Practice Mode' : `Q ${currentIndex + 1}/${questions.length}`}
-                {currentQuestion.version > 1 && <span className="ml-1 text-primary">v{currentQuestion.version}</span>}
+                <span className="ml-1.5 text-primary font-medium">V{currentQuestion.version}</span>
+                <span className="ml-1 opacity-60">· {formatLabel}</span>
                 {isGenAlpha && ' 🔥'}
               </p>
               <Progress value={progressPct} className="mt-1 h-1.5 w-32" />
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5">
+              <Zap className="h-3 w-3 text-accent-foreground" />
+              <span className="text-[10px] font-bold text-accent-foreground">{xpValue} XP</span>
+            </div>
             <span className="text-xs text-muted-foreground">{nickname}</span>
-            {isGenAlpha && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent">GEN α</span>}
             <button onClick={() => { logout(); navigate('/'); }} className="text-muted-foreground hover:text-foreground">
               <LogOut className="h-5 w-5" />
             </button>
@@ -162,16 +175,30 @@ const AssessmentPage = () => {
                 <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{errorCategoryLabels[currentQuestion.errorCategory]}</span>
               </div>
 
+              {/* V2: Newspaper clipping for headlines */}
               {currentQuestion.headline && <NewspaperClipping headline={currentQuestion.headline} />}
+              
+              {/* V2: Quote attribution */}
               {currentQuestion.quote && currentQuestion.quoteSource && (
                 <QuoteAttribution quote={currentQuestion.quote} source={currentQuestion.quoteSource} />
+              )}
+
+              {/* V3: Visual stimulus (described image) */}
+              {currentQuestion.imageDescription && (
+                <ImageDescription description={currentQuestion.imageDescription} />
+              )}
+
+              {/* V4: Diagram / Data */}
+              {currentQuestion.diagramData && (
+                <DiagramBox data={currentQuestion.diagramData} />
               )}
 
               <h2 className="font-display text-lg font-semibold text-foreground leading-snug mb-5">
                 <VocabHighlighter text={currentQuestion.text} />
               </h2>
 
-              {currentQuestion.errorCategory === 'sequence' && currentQuestion.timelineData && showResult && (
+              {/* V5: Timeline (shown after answer for sequence questions) */}
+              {currentQuestion.timelineData && currentQuestion.versionFormat === 'timeline' && (
                 <Timeline events={currentQuestion.timelineData} />
               )}
 
@@ -197,10 +224,18 @@ const AssessmentPage = () => {
                 })}
               </div>
 
+              {/* XP earned animation */}
+              {showResult && earnedXP > 0 && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-3 flex items-center justify-center gap-1">
+                  <Zap className="h-4 w-4 text-accent-foreground" />
+                  <span className="text-sm font-bold text-accent-foreground">+{earnedXP} XP</span>
+                </motion.div>
+              )}
+
               {showStrategy && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-5 rounded-xl border-2 border-accent bg-accent/10 p-4">
                   <div className="flex items-start gap-2">
-                    <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+                    <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-accent-foreground" />
                     <div>
                       <p className="text-sm font-semibold text-foreground">{isGenAlpha ? 'Coach Says 🎤' : 'Pattern Tip'}</p>
                       <p className="mt-1 text-sm text-muted-foreground">{tipText}</p>
@@ -241,6 +276,7 @@ function ResultsScreen({ session, nickname, isGenAlpha, getStandardPerformance, 
   const correctQ = session.answers.filter(a => a.correct).length;
   const pct = totalQ > 0 ? Math.round((correctQ / totalQ) * 100) : 0;
   const passed = pct >= 70;
+  const totalXP = session.answers.reduce((sum, a) => sum + (a.xpEarned || 0), 0);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
@@ -259,7 +295,13 @@ function ResultsScreen({ session, nickname, isGenAlpha, getStandardPerformance, 
             </span>
           )}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">Retake #{session.retakeNumber} · Each retake serves fresh question versions</p>
+        <div className="mt-2 flex items-center justify-center gap-1">
+          <Zap className="h-4 w-4 text-accent-foreground" />
+          <span className="text-sm font-bold text-accent-foreground">{totalXP} XP earned</span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Retake #{session.retakeNumber} · V{((session.retakeNumber - 1) % 5) + 1} ({VERSION_FORMAT_LABELS[['direct', 'quote', 'visual', 'diagram', 'timeline'][((session.retakeNumber - 1) % 5)] as import('@/types/sol').VersionFormat]})
+        </p>
         <div className="mt-6 space-y-2">
           {solStandards.filter(s => s.id !== 'VUS.1' && session.answers.some(a => a.standardId === s.id)).map(std => {
             const perf = getStandardPerformance(std.id);
