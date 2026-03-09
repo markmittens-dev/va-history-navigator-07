@@ -1,6 +1,25 @@
 export type ErrorCategory = 'memorization' | 'sequence' | 'stimulus';
 export type QuizMode = 'unit-mastery' | 'mock-sol';
 export type CoachPersonality = 'historian' | 'gen-alpha';
+export type VersionFormat = 'direct' | 'quote' | 'visual' | 'diagram' | 'timeline';
+
+export const VERSION_FORMAT_ORDER: VersionFormat[] = ['direct', 'quote', 'visual', 'diagram', 'timeline'];
+
+export const VERSION_XP: Record<VersionFormat, number> = {
+  direct: 10,
+  quote: 25,
+  visual: 35,
+  diagram: 40,
+  timeline: 25,
+};
+
+export const VERSION_FORMAT_LABELS: Record<VersionFormat, string> = {
+  direct: 'Direct Recall',
+  quote: 'Quote / Primary Source',
+  visual: 'Visual Stimulus',
+  diagram: 'Data / Diagram',
+  timeline: 'Timeline / Sequence',
+};
 
 export interface SOLStandard {
   id: string;
@@ -11,8 +30,9 @@ export interface SOLStandard {
 
 export interface Question {
   id: string;
-  templateId: string; // groups 5 versions of same question
+  templateId: string;
   version: number;    // 1-5
+  versionFormat: VersionFormat;
   standardId: string;
   text: string;
   options: string[];
@@ -26,6 +46,20 @@ export interface Question {
   headline?: string;
   quote?: string;
   quoteSource?: string;
+  imageDescription?: string; // V3: styled text box describing an image
+  diagramData?: DiagramData;  // V4: flow, table, or list
+}
+
+export interface DiagramData {
+  type: 'flow' | 'table' | 'list';
+  // Flow: array of steps with optional blank
+  flowSteps?: string[];
+  // Table
+  tableHeaders?: string[];
+  tableRows?: string[][];
+  tableCaption?: string;
+  // Bulleted list
+  listItems?: string[];
 }
 
 export interface TimelineEvent {
@@ -41,6 +75,7 @@ export interface StudentAnswer {
   correct: boolean;
   errorCategory: ErrorCategory;
   timestamp: number;
+  xpEarned?: number;
 }
 
 export interface VocabClick {
@@ -50,8 +85,14 @@ export interface VocabClick {
   classCode: string;
 }
 
+export interface StandardMastery {
+  standardId: string;
+  versionsCorrect: number[]; // which version numbers answered correctly
+  mastered: boolean; // true if 3+ of 5 versions correct
+}
+
 export interface StudentSession {
-  nickname: string; // Remediation ID (PP-101)
+  nickname: string;
   classCode: string;
   answers: StudentAnswer[];
   currentStandardIndex: number;
@@ -64,8 +105,10 @@ export interface StudentSession {
   coachPersonality: CoachPersonality;
   vocabClicks: VocabClick[];
   hintsUsed: number;
-  retakeNumber: number; // tracks which retake attempt (1-5)
-  usedTemplateVersions: Record<string, number[]>; // templateId -> versions already seen
+  retakeNumber: number;
+  usedTemplateVersions: Record<string, number[]>;
+  totalXP: number;
+  standardMastery: Record<string, StandardMastery>;
 }
 
 export interface StandardPerformance {

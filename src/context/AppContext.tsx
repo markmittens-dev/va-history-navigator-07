@@ -128,6 +128,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       vocabClicks: [], hintsUsed: 0,
       retakeNumber: 1,
       usedTemplateVersions: {},
+      totalXP: 0,
+      standardMastery: {},
     });
   }, []);
 
