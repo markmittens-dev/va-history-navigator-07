@@ -967,8 +967,8 @@ const allQuestions: Question[] = [
   },
 ];
 
-// Export the full question bank
-export const questionBank: Question[] = allQuestions;
+// Export the full question bank (merge inline + external unit files)
+export const questionBank: Question[] = [...allQuestions, ...vus14Questions];
 
 // Generate practice questions for the adaptive feedback loop
 export function generatePracticeQuestions(
