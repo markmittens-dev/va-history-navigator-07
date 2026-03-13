@@ -1,5 +1,6 @@
 import { Question, VersionFormat } from '@/types/sol';
 import { selectVersionsForQuiz, getVersionForAttempt } from './questionVariants';
+import { vus14Questions } from './questions-vus14';
 
 /**
  * PERFECT PRACTICE — 5-Version Question Bank
