@@ -1,5 +1,6 @@
 import { Question, VersionFormat } from '@/types/sol';
 import { selectVersionsForQuiz, getVersionForAttempt } from './questionVariants';
+import { vus14Questions } from './questions-vus14';
 
 /**
  * PERFECT PRACTICE — 5-Version Question Bank
@@ -966,8 +967,8 @@ const allQuestions: Question[] = [
   },
 ];
 
-// Export the full question bank
-export const questionBank: Question[] = allQuestions;
+// Export the full question bank (merge inline + external unit files)
+export const questionBank: Question[] = [...allQuestions, ...vus14Questions];
 
 // Generate practice questions for the adaptive feedback loop
 export function generatePracticeQuestions(
