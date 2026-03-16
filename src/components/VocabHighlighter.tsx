@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { gatekeeperVocabulary } from '@/data/vocabulary';
 import { useAppState } from '@/context/AppContext';
@@ -18,8 +18,26 @@ const VocabHighlighter = ({ text }: VocabHighlighterProps) => {
   const [activeTerm, setActiveTerm] = useState<string | null>(null);
   const [activeDefinition, setActiveDefinition] = useState<string>('');
   const { logVocabClick } = useAppState();
+  const containerRef = useRef<HTMLSpanElement>(null);
 
-  const handleClick = useCallback((term: string) => {
+  // Dismiss on outside click/tap
+  useEffect(() => {
+    if (!activeTerm) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setActiveTerm(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [activeTerm]);
+
+  const handleClick = useCallback((term: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     const found = gatekeeperVocabulary.find(v => v.term.toLowerCase() === term.toLowerCase());
     if (!found) return;
     logVocabClick(found.term);
@@ -53,12 +71,12 @@ const VocabHighlighter = ({ text }: VocabHighlighterProps) => {
   }
 
   return (
-    <span className="relative">
+    <span className="relative" ref={containerRef}>
       {parts.map((part, i) =>
         part.isVocab ? (
           <button
             key={i}
-            onClick={() => handleClick(part.text)}
+            onClick={(e) => handleClick(part.text, e)}
             className="underline decoration-dotted decoration-secondary decoration-2 underline-offset-2 font-semibold text-foreground hover:text-secondary transition-colors cursor-pointer"
           >
             {part.text}

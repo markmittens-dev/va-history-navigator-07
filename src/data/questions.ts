@@ -616,63 +616,6 @@ const allQuestions: Question[] = [
   },
 
   // ===========================
-  // VUS.14 — Pearl Harbor
-  // ===========================
-  {
-    id: 'vus14-1-v1', templateId: 'vus14-1', version: 1, versionFormat: 'direct',
-    standardId: 'VUS.14', text: 'What event directly caused the United States to enter World War II?',
-    options: ['Invasion of Poland', 'Fall of France', 'Attack on Pearl Harbor', 'Battle of Britain'],
-    correctIndex: 2, errorCategory: 'memorization',
-    strategyTip: 'The US maintained neutrality until Japan attacked Pearl Harbor on December 7, 1941.',
-    genAlphaTip: 'Pearl Harbor was the "that\'s it, we\'re fighting" moment. Dec 7, 1941. 💥',
-  },
-  {
-    id: 'vus14-1-v2', templateId: 'vus14-1', version: 2, versionFormat: 'quote',
-    standardId: 'VUS.14', text: 'This speech was delivered in response to which event?',
-    options: ['D-Day invasion', 'Attack on Pearl Harbor', 'Bombing of Hiroshima', 'Fall of Berlin'],
-    correctIndex: 1, errorCategory: 'stimulus',
-    quote: 'Yesterday, December 7th, 1941 — a date which will live in infamy — the United States of America was suddenly and deliberately attacked by naval and air forces of the Empire of Japan.',
-    quoteSource: 'President Franklin D. Roosevelt, Address to Congress (1941)',
-    strategyTip: '"Date which will live in infamy" + December 7, 1941 = Pearl Harbor attack.',
-    genAlphaTip: '"A date which will live in infamy" — FDR was talking about Pearl Harbor. Most iconic war speech ever. 🎤',
-  },
-  {
-    id: 'vus14-1-v3', templateId: 'vus14-1', version: 3, versionFormat: 'visual',
-    standardId: 'VUS.14', text: 'This image depicts which event that brought the US into World War II?',
-    options: ['Battle of Midway', 'D-Day invasion', 'Attack on Pearl Harbor', 'Battle of the Bulge'],
-    correctIndex: 2, errorCategory: 'stimulus',
-    imageDescription: 'A black-and-white photograph from December 7, 1941 showing the USS Arizona battleship engulfed in flames and thick black smoke at a naval base in Hawaii. Other warships are visible in the background, some listing or sinking. Japanese planes can be seen in the sky.',
-    strategyTip: 'USS Arizona + Hawaii + December 7, 1941 + Japanese attack = Pearl Harbor.',
-    genAlphaTip: 'USS Arizona on fire, Hawaii, Japanese planes — that\'s Pearl Harbor. The moment everything changed. 🔥🚢',
-  },
-  {
-    id: 'vus14-1-v4', templateId: 'vus14-1', version: 4, versionFormat: 'diagram',
-    standardId: 'VUS.14', text: 'Which event best completes this diagram?',
-    options: ['Invasion of Poland', 'Attack on Pearl Harbor', 'Signing of Lend-Lease Act', 'Fall of France'],
-    correctIndex: 1, errorCategory: 'stimulus',
-    diagramData: {
-      type: 'flow',
-      flowSteps: ['US maintains neutrality policy', '?', 'Congress declares war on Japan'],
-    },
-    strategyTip: 'Neutrality → [attack] → war declaration. Pearl Harbor was the trigger.',
-    genAlphaTip: 'Neutral → ??? → war declared. Pearl Harbor was the event that flipped the switch. 🔄',
-  },
-  {
-    id: 'vus14-1-v5', templateId: 'vus14-1', version: 5, versionFormat: 'timeline',
-    standardId: 'VUS.14', text: 'The attack on Pearl Harbor belongs at which position?',
-    options: ['1', '2', '3', '4'],
-    correctIndex: 1, errorCategory: 'sequence',
-    timelineData: [
-      { year: 1939, label: 'WWII begins in Europe' },
-      { year: 1941, label: '?', highlight: true },
-      { year: 1944, label: 'D-Day invasion' },
-      { year: 1945, label: 'War ends' },
-    ],
-    strategyTip: 'WWII in Europe (1939) → Pearl Harbor (1941) → D-Day (1944) → War ends (1945).',
-    genAlphaTip: 'Europe (1939) → Pearl Harbor (1941) → D-Day (1944) → VE/VJ Day (1945). Timeline locked. 📅',
-  },
-
-  // ===========================
   // VUS.15 — Containment
   // ===========================
   {
