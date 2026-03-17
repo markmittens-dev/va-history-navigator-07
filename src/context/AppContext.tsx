@@ -232,7 +232,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...prev, vocabClicks: [...prev.vocabClicks, click] };
     });
     setClassData(prev => {
-      const existing = prev[classCode] || { classCode, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {} };
+      const existing = prev[classCode] || { classCode, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {}, studentRecords: {} };
       return { ...prev, [classCode]: { ...existing, vocabClicks: [...existing.vocabClicks, click] } };
     });
   }, [nickname, classCode]);
