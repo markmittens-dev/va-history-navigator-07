@@ -19,15 +19,7 @@ const TeacherDashboard = () => {
 
   const filteredStandards = solStandards.filter(s => s.id !== 'VUS.1');
 
-  if (!data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <p className="text-muted-foreground">No data available yet for this class.</p>
-      </div>
-    );
-  }
-
-  const studentRecords = data.studentRecords || {};
+  const studentRecords = data?.studentRecords || {};
   const studentIds = Object.keys(studentRecords).sort();
 
   const getMasteryLevel = (correct: number): 'mastered' | 'developing' | 'not-mastered' => {
@@ -52,7 +44,6 @@ const TeacherDashboard = () => {
     }
   };
 
-  // Class-level standard struggle: average correct across all students
   const standardStruggles = useMemo(() => {
     return filteredStandards.map(std => {
       let totalCorrect = 0;
@@ -68,6 +59,14 @@ const TeacherDashboard = () => {
       return { ...std, avgCorrect, studentCount, level: getMasteryLevel(Math.round(avgCorrect)) };
     }).sort((a, b) => a.avgCorrect - b.avgCorrect);
   }, [studentRecords, studentIds, filteredStandards]);
+
+  if (!data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <p className="text-muted-foreground">No data available yet for this class.</p>
+      </div>
+    );
+  }
 
   const standardsWithData = filteredStandards.map(std => {
     const perf = data.standards[std.id];
