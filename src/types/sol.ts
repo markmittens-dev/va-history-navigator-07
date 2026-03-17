@@ -120,10 +120,27 @@ export interface StandardPerformance {
   stimulus: { total: number; correct: number };
 }
 
+/** Per-student, per-standard mastery: how many correct answers a student has for a given standard */
+export interface StudentStandardMastery {
+  correct: number;    // number of correct answers for this standard
+  attempts: number;   // total attempts for this standard
+}
+
+/** Per-student tracking across all standards and units */
+export interface StudentRecord {
+  remediationId: string;
+  /** standardId → mastery data */
+  standards: Record<string, StudentStandardMastery>;
+  /** unitId (e.g. 'VUS.14') → number of quiz attempts */
+  unitAttempts: Record<string, number>;
+}
+
 export interface ClassPerformance {
   classCode: string;
   standards: Record<string, StandardPerformance>;
   totalStudents: number;
   vocabClicks: VocabClick[];
   hintsByStudent: Record<string, number>;
+  /** Per-student per-standard mastery data for the heatmap */
+  studentRecords: Record<string, StudentRecord>;
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { StudentSession, StudentAnswer, ClassPerformance, StandardPerformance, VocabClick } from '@/types/sol';
+import { StudentSession, StudentAnswer, ClassPerformance, StandardPerformance, VocabClick, StudentRecord } from '@/types/sol';
 
 interface RetakeRecord {
   standardId: string;
@@ -44,6 +44,27 @@ function createEmptyPerformance(standardId: string): StandardPerformance {
   };
 }
 
+function generateDemoStudentRecords(classCode: string): Record<string, StudentRecord> {
+  const standards = ['VUS.2','VUS.3','VUS.4','VUS.5','VUS.6','VUS.7','VUS.8','VUS.9','VUS.10','VUS.11','VUS.12','VUS.13','VUS.14','VUS.15','VUS.16','VUS.17'];
+  const studentIds = ['PP-101','PP-102','PP-103','PP-104','PP-105','PP-106','PP-107','PP-108','PP-109','PP-110'];
+  const records: Record<string, StudentRecord> = {};
+  studentIds.forEach(id => {
+    const stdData: Record<string, { correct: number; attempts: number }> = {};
+    const unitAttempts: Record<string, number> = {};
+    standards.forEach(sid => {
+      const attempts = Math.floor(Math.random() * 8) + 1;
+      const correct = Math.floor(Math.random() * (attempts + 1));
+      stdData[sid] = { correct, attempts };
+    });
+    // Random unit attempts
+    ['VUS.14','VUS.9','VUS.7'].forEach(u => {
+      unitAttempts[u] = Math.floor(Math.random() * 4) + 1;
+    });
+    records[id] = { remediationId: id, standards: stdData, unitAttempts };
+  });
+  return records;
+}
+
 function generateDemoClassData(classCode: string): ClassPerformance {
   const standards = ['VUS.2','VUS.3','VUS.4','VUS.5','VUS.6','VUS.7','VUS.8','VUS.9','VUS.10','VUS.11','VUS.12','VUS.13','VUS.14','VUS.15','VUS.16','VUS.17'];
   const perf: Record<string, StandardPerformance> = {};
@@ -79,7 +100,7 @@ function generateDemoClassData(classCode: string): ClassPerformance {
     'PP-101': 12, 'PP-102': 3, 'PP-103': 8, 'PP-104': 1, 'PP-105': 15,
     'PP-106': 0, 'PP-107': 6, 'PP-108': 2, 'PP-109': 9, 'PP-110': 4,
   };
-  return { classCode, standards: perf, totalStudents: Math.floor(Math.random() * 20) + 10, vocabClicks: demoVocabClicks, hintsByStudent: demoHints };
+  return { classCode, standards: perf, totalStudents: 10, vocabClicks: demoVocabClicks, hintsByStudent: demoHints, studentRecords: generateDemoStudentRecords(classCode) };
 }
 
 function generateDemoRetakeHistory(): Record<string, RetakeRecord[]> {
@@ -179,16 +200,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     setClassData(prev => {
       const code = classCode;
-      const existing = prev[code] || { classCode: code, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {} };
+      const remId = nickname;
+      const existing = prev[code] || { classCode: code, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {}, studentRecords: {} };
       const sp = existing.standards[answer.standardId] || createEmptyPerformance(answer.standardId);
       sp.total++;
       if (answer.correct) sp.correct++;
       const cat = sp[answer.errorCategory];
       cat.total++;
       if (answer.correct) cat.correct++;
-      return { ...prev, [code]: { ...existing, standards: { ...existing.standards, [answer.standardId]: { ...sp } } } };
+
+      // Update per-student per-standard mastery
+      const studentRecords = { ...existing.studentRecords };
+      const studentRec = studentRecords[remId] || { remediationId: remId, standards: {}, unitAttempts: {} };
+      const stdMastery = studentRec.standards[answer.standardId] || { correct: 0, attempts: 0 };
+      stdMastery.attempts++;
+      if (answer.correct) stdMastery.correct++;
+      studentRecords[remId] = {
+        ...studentRec,
+        standards: { ...studentRec.standards, [answer.standardId]: { ...stdMastery } },
+      };
+
+      return { ...prev, [code]: { ...existing, standards: { ...existing.standards, [answer.standardId]: { ...sp } }, studentRecords } };
     });
-  }, [classCode]);
+  }, [classCode, nickname]);
 
   const getStandardPerformance = useCallback((standardId: string): StandardPerformance => {
     if (!session) return createEmptyPerformance(standardId);
@@ -211,7 +245,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...prev, vocabClicks: [...prev.vocabClicks, click] };
     });
     setClassData(prev => {
-      const existing = prev[classCode] || { classCode, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {} };
+      const existing = prev[classCode] || { classCode, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {}, studentRecords: {} };
       return { ...prev, [classCode]: { ...existing, vocabClicks: [...existing.vocabClicks, click] } };
     });
   }, [nickname, classCode]);
