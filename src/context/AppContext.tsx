@@ -200,7 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     setClassData(prev => {
       const code = classCode;
-      const existing = prev[code] || { classCode: code, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {} };
+      const existing = prev[code] || { classCode: code, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {}, studentRecords: {} };
       const sp = existing.standards[answer.standardId] || createEmptyPerformance(answer.standardId);
       sp.total++;
       if (answer.correct) sp.correct++;
