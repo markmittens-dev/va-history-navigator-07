@@ -44,6 +44,27 @@ function createEmptyPerformance(standardId: string): StandardPerformance {
   };
 }
 
+function generateDemoStudentRecords(classCode: string): Record<string, StudentRecord> {
+  const standards = ['VUS.2','VUS.3','VUS.4','VUS.5','VUS.6','VUS.7','VUS.8','VUS.9','VUS.10','VUS.11','VUS.12','VUS.13','VUS.14','VUS.15','VUS.16','VUS.17'];
+  const studentIds = ['PP-101','PP-102','PP-103','PP-104','PP-105','PP-106','PP-107','PP-108','PP-109','PP-110'];
+  const records: Record<string, StudentRecord> = {};
+  studentIds.forEach(id => {
+    const stdData: Record<string, { correct: number; attempts: number }> = {};
+    const unitAttempts: Record<string, number> = {};
+    standards.forEach(sid => {
+      const attempts = Math.floor(Math.random() * 8) + 1;
+      const correct = Math.floor(Math.random() * (attempts + 1));
+      stdData[sid] = { correct, attempts };
+    });
+    // Random unit attempts
+    ['VUS.14','VUS.9','VUS.7'].forEach(u => {
+      unitAttempts[u] = Math.floor(Math.random() * 4) + 1;
+    });
+    records[id] = { remediationId: id, standards: stdData, unitAttempts };
+  });
+  return records;
+}
+
 function generateDemoClassData(classCode: string): ClassPerformance {
   const standards = ['VUS.2','VUS.3','VUS.4','VUS.5','VUS.6','VUS.7','VUS.8','VUS.9','VUS.10','VUS.11','VUS.12','VUS.13','VUS.14','VUS.15','VUS.16','VUS.17'];
   const perf: Record<string, StandardPerformance> = {};
@@ -79,7 +100,7 @@ function generateDemoClassData(classCode: string): ClassPerformance {
     'PP-101': 12, 'PP-102': 3, 'PP-103': 8, 'PP-104': 1, 'PP-105': 15,
     'PP-106': 0, 'PP-107': 6, 'PP-108': 2, 'PP-109': 9, 'PP-110': 4,
   };
-  return { classCode, standards: perf, totalStudents: Math.floor(Math.random() * 20) + 10, vocabClicks: demoVocabClicks, hintsByStudent: demoHints };
+  return { classCode, standards: perf, totalStudents: 10, vocabClicks: demoVocabClicks, hintsByStudent: demoHints, studentRecords: generateDemoStudentRecords(classCode) };
 }
 
 function generateDemoRetakeHistory(): Record<string, RetakeRecord[]> {
