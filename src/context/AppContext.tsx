@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { StudentSession, StudentAnswer, ClassPerformance, StandardPerformance, VocabClick } from '@/types/sol';
+import { StudentSession, StudentAnswer, ClassPerformance, StandardPerformance, VocabClick, StudentRecord } from '@/types/sol';
 
 interface RetakeRecord {
   standardId: string;
