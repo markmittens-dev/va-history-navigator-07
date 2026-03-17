@@ -200,6 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     setClassData(prev => {
       const code = classCode;
+      const remId = nickname;
       const existing = prev[code] || { classCode: code, standards: {}, totalStudents: 1, vocabClicks: [], hintsByStudent: {}, studentRecords: {} };
       const sp = existing.standards[answer.standardId] || createEmptyPerformance(answer.standardId);
       sp.total++;
@@ -207,9 +208,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const cat = sp[answer.errorCategory];
       cat.total++;
       if (answer.correct) cat.correct++;
-      return { ...prev, [code]: { ...existing, standards: { ...existing.standards, [answer.standardId]: { ...sp } } } };
+
+      // Update per-student per-standard mastery
+      const studentRecords = { ...existing.studentRecords };
+      const studentRec = studentRecords[remId] || { remediationId: remId, standards: {}, unitAttempts: {} };
+      const stdMastery = studentRec.standards[answer.standardId] || { correct: 0, attempts: 0 };
+      stdMastery.attempts++;
+      if (answer.correct) stdMastery.correct++;
+      studentRecords[remId] = {
+        ...studentRec,
+        standards: { ...studentRec.standards, [answer.standardId]: { ...stdMastery } },
+      };
+
+      return { ...prev, [code]: { ...existing, standards: { ...existing.standards, [answer.standardId]: { ...sp } }, studentRecords } };
     });
-  }, [classCode]);
+  }, [classCode, nickname]);
 
   const getStandardPerformance = useCallback((standardId: string): StandardPerformance => {
     if (!session) return createEmptyPerformance(standardId);
