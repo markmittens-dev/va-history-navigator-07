@@ -1,6 +1,7 @@
 export interface VocabWord {
   term: string;
   definition: string;
+  genZDefinition?: string;
   category: 'government' | 'conflict' | 'economics' | 'global' | 'rights' | 'academic' | 'wwii';
 }
 
