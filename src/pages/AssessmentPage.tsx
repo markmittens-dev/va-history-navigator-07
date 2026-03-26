@@ -1,11 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, ArrowRight, ArrowLeft, LogOut, Lightbulb, BarChart3, Zap } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowRight, ArrowLeft, LogOut, Lightbulb, Volume2, VolumeX, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppState } from '@/context/AppContext';
 import { questionBank, generatePracticeQuestions, getMockSOLQuestions, getUnitMasteryQuestions } from '@/data/questions';
 import { solStandards } from '@/data/standards';
-import { Question, ErrorCategory, VERSION_XP, VERSION_FORMAT_LABELS } from '@/types/sol';
+import { Question, ErrorCategory, VERSION_FORMAT_LABELS } from '@/types/sol';
 import { useNavigate } from 'react-router-dom';
 import { Progress } from '@/components/ui/progress';
 import Timeline from '@/components/Timeline';
@@ -14,16 +14,32 @@ import NewspaperClipping from '@/components/NewspaperClipping';
 import QuoteAttribution from '@/components/QuoteAttribution';
 import ImageDescription from '@/components/ImageDescription';
 import DiagramBox from '@/components/DiagramBox';
+import { useSpeech } from '@/hooks/useSpeech';
 
 const errorCategoryLabels: Record<ErrorCategory, string> = {
-  memorization: '📝 Memorization',
-  sequence: '🔢 Sequence',
-  stimulus: '🖼️ Stimulus Analysis',
+  memorization: 'Memorization',
+  sequence: 'Sequence',
+  stimulus: 'Stimulus Analysis',
 };
 
+/* ───────── Speaker Button ───────── */
+const SpeakButton = ({ text, speak, stop, isSpeaking, small = false }: {
+  text: string; speak: (t: string) => void; stop: () => void; isSpeaking: boolean; small?: boolean;
+}) => (
+  <button
+    onClick={(e) => { e.stopPropagation(); isSpeaking ? stop() : speak(text); }}
+    className={`inline-flex items-center justify-center rounded-full text-primary hover:text-accent transition-colors ${small ? 'h-7 w-7' : 'h-9 w-9'}`}
+    title={isSpeaking ? 'Stop reading' : 'Read aloud'}
+  >
+    {isSpeaking ? <VolumeX className={small ? 'h-3.5 w-3.5' : 'h-4 w-4'} /> : <Volume2 className={small ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
+  </button>
+);
+
+/* ───────── Assessment Page ───────── */
 const AssessmentPage = () => {
   const { session, recordAnswer, logout, nickname, getStandardPerformance, incrementHints, trackVersionUsed } = useAppState();
   const navigate = useNavigate();
+  const { speak, stop, isSpeaking, autoRead, setAutoRead } = useSpeech();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -33,7 +49,7 @@ const AssessmentPage = () => {
   const [feedbackIndex, setFeedbackIndex] = useState(0);
   const [showStrategy, setShowStrategy] = useState(false);
   const [history, setHistory] = useState<number[]>([]);
-  const [earnedXP, setEarnedXP] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
 
   const questions = useMemo(() => {
     if (!session) return [];
@@ -44,7 +60,6 @@ const AssessmentPage = () => {
   }, [session?.quizMode, session?.selectedUnit, session?.retakeNumber]);
 
   const isGenAlpha = session?.coachPersonality === 'gen-alpha';
-
   const activeQuestions = feedbackMode ? feedbackQuestions : questions;
   const activeIndex = feedbackMode ? feedbackIndex : currentIndex;
   const currentQuestion = activeQuestions[activeIndex];
@@ -54,6 +69,14 @@ const AssessmentPage = () => {
       trackVersionUsed(currentQuestion.templateId, currentQuestion.version);
     }
   }, [currentQuestion?.id]);
+
+  // Auto-read questions
+  useEffect(() => {
+    if (autoRead && currentQuestion && !showResult) {
+      const fullText = [currentQuestion.imageDescription, currentQuestion.text].filter(Boolean).join('. ');
+      speak(fullText);
+    }
+  }, [currentQuestion?.id, autoRead]);
 
   if (!session) { navigate('/'); return null; }
 
@@ -65,12 +88,10 @@ const AssessmentPage = () => {
 
   const handleSubmit = () => {
     if (selectedOption === null) return;
+    stop();
     const correct = selectedOption === currentQuestion.correctIndex;
-    const xp = correct ? VERSION_XP[currentQuestion.versionFormat] : 0;
-    recordAnswer({ questionId: currentQuestion.id, standardId: currentQuestion.standardId, selectedIndex: selectedOption, correct, errorCategory: currentQuestion.errorCategory, timestamp: Date.now(), xpEarned: xp });
+    recordAnswer({ questionId: currentQuestion.id, standardId: currentQuestion.standardId, selectedIndex: selectedOption, correct, errorCategory: currentQuestion.errorCategory, timestamp: Date.now(), xpEarned: 0 });
     setShowResult(true);
-    if (correct) setEarnedXP(xp);
-    else { setEarnedXP(0); }
     if (!correct) {
       setShowStrategy(true);
       incrementHints();
@@ -78,6 +99,7 @@ const AssessmentPage = () => {
   };
 
   const handleNext = () => {
+    stop();
     const wasCorrect = selectedOption === currentQuestion.correctIndex;
     if (!wasCorrect && !feedbackMode) {
       const practice = generatePracticeQuestions(currentQuestion, questionBank);
@@ -93,12 +115,8 @@ const AssessmentPage = () => {
       }
     }
     if (feedbackMode) {
-      if (feedbackIndex < feedbackQuestions.length - 1) {
-        setFeedbackIndex(prev => prev + 1);
-      } else {
-        setFeedbackMode(false);
-        setCurrentIndex(prev => prev + 1);
-      }
+      if (feedbackIndex < feedbackQuestions.length - 1) setFeedbackIndex(prev => prev + 1);
+      else { setFeedbackMode(false); setCurrentIndex(prev => prev + 1); }
     } else {
       setHistory(prev => [...prev, currentIndex]);
       setCurrentIndex(prev => prev + 1);
@@ -106,13 +124,13 @@ const AssessmentPage = () => {
     setSelectedOption(null);
     setShowResult(false);
     setShowStrategy(false);
-    setEarnedXP(0);
   };
 
   const handleBack = () => {
+    stop();
     if (feedbackMode) {
       if (feedbackIndex > 0) setFeedbackIndex(prev => prev - 1);
-      else { setFeedbackMode(false); }
+      else setFeedbackMode(false);
     } else if (history.length > 0) {
       const prevIndex = history[history.length - 1];
       setHistory(prev => prev.slice(0, -1));
@@ -121,7 +139,6 @@ const AssessmentPage = () => {
     setSelectedOption(null);
     setShowResult(false);
     setShowStrategy(false);
-    setEarnedXP(0);
   };
 
   const canGoBack = feedbackMode ? feedbackIndex > 0 : history.length > 0;
@@ -130,12 +147,11 @@ const AssessmentPage = () => {
     : Math.round(((currentIndex + 1) / questions.length) * 100);
 
   const tipText = isGenAlpha ? currentQuestion.genAlphaTip : currentQuestion.strategyTip;
-  const formatLabel = VERSION_FORMAT_LABELS[currentQuestion.versionFormat];
-  const xpValue = VERSION_XP[currentQuestion.versionFormat];
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur-sm px-4 py-3">
+      {/* Header — clean, no XP */}
+      <header className="sticky top-0 z-10 border-b border-border bg-card px-4 py-3">
         <div className="mx-auto flex max-w-lg items-center justify-between">
           <div className="flex items-center gap-3">
             {canGoBack && (
@@ -144,101 +160,124 @@ const AssessmentPage = () => {
               </button>
             )}
             <div>
-              <p className="text-xs text-muted-foreground">
-                {feedbackMode ? '🔄 Practice Mode' : `Q ${currentIndex + 1}/${questions.length}`}
-                <span className="ml-1.5 text-primary font-medium">V{currentQuestion.version}</span>
-                <span className="ml-1 opacity-60">· {formatLabel}</span>
-                {isGenAlpha && ' 🔥'}
+              <p className="text-sm font-medium text-foreground">
+                {feedbackMode ? 'Practice Mode' : `Question ${currentIndex + 1} of ${questions.length}`}
               </p>
-              <Progress value={progressPct} className="mt-1 h-1.5 w-32" />
+              <Progress value={progressPct} className="mt-1.5 h-2 w-40" />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5">
-              <Zap className="h-3 w-3 text-accent-foreground" />
-              <span className="text-[10px] font-bold text-accent-foreground">{xpValue} XP</span>
-            </div>
-            <span className="text-xs text-muted-foreground">{nickname}</span>
-            <button onClick={() => { logout(); navigate('/'); }} className="text-muted-foreground hover:text-foreground">
-              <LogOut className="h-5 w-5" />
+            <button onClick={() => setShowSettings(!showSettings)} className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <Settings className="h-4 w-4" />
+            </button>
+            <span className="text-xs font-medium text-muted-foreground">{nickname}</span>
+            <button onClick={() => { stop(); logout(); navigate('/'); }} className="text-muted-foreground hover:text-foreground">
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
         </div>
+
+        {/* Settings dropdown */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mx-auto max-w-lg mt-3 pt-3 border-t border-border">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-sm text-foreground">Auto-read questions</span>
+                  <button
+                    onClick={() => setAutoRead(!autoRead)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoRead ? 'bg-primary' : 'bg-muted'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-card transition-transform ${autoRead ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </label>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
+      {/* Main Content */}
       <main className="flex-1 px-4 py-6">
         <div className="mx-auto max-w-lg">
           <AnimatePresence mode="wait">
-            <motion.div key={currentQuestion.id} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
-              <div className="mb-4 flex items-center gap-2">
-                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{currentQuestion.standardId}</span>
-                <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{errorCategoryLabels[currentQuestion.errorCategory]}</span>
+            <motion.div key={currentQuestion.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+              {/* Question card */}
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                {/* Tags */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{currentQuestion.standardId}</span>
+                  <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{errorCategoryLabels[currentQuestion.errorCategory]}</span>
+                </div>
+
+                {/* Stimuli */}
+                {currentQuestion.headline && <NewspaperClipping headline={currentQuestion.headline} />}
+                {currentQuestion.quote && currentQuestion.quoteSource && (
+                  <QuoteAttribution quote={currentQuestion.quote} source={currentQuestion.quoteSource} />
+                )}
+                {currentQuestion.imageDescription && (
+                  <ImageDescription description={currentQuestion.imageDescription} />
+                )}
+                {currentQuestion.diagramData && (
+                  <DiagramBox data={currentQuestion.diagramData} />
+                )}
+
+                {/* Question text with speaker */}
+                <div className="flex items-start gap-2">
+                  <h2 className="flex-1 text-lg font-semibold text-foreground leading-relaxed">
+                    <VocabHighlighter text={currentQuestion.text} />
+                  </h2>
+                  <SpeakButton
+                    text={[currentQuestion.imageDescription, currentQuestion.text].filter(Boolean).join('. ')}
+                    speak={speak} stop={stop} isSpeaking={isSpeaking}
+                  />
+                </div>
+
+                {/* Timeline */}
+                {currentQuestion.timelineData && currentQuestion.versionFormat === 'timeline' && (
+                  <div className="mt-4">
+                    <Timeline events={currentQuestion.timelineData} />
+                  </div>
+                )}
               </div>
 
-              {/* V2: Newspaper clipping for headlines */}
-              {currentQuestion.headline && <NewspaperClipping headline={currentQuestion.headline} />}
-              
-              {/* V2: Quote attribution */}
-              {currentQuestion.quote && currentQuestion.quoteSource && (
-                <QuoteAttribution quote={currentQuestion.quote} source={currentQuestion.quoteSource} />
-              )}
-
-              {/* V3: Visual stimulus (described image) */}
-              {currentQuestion.imageDescription && (
-                <ImageDescription description={currentQuestion.imageDescription} />
-              )}
-
-              {/* V4: Diagram / Data */}
-              {currentQuestion.diagramData && (
-                <DiagramBox data={currentQuestion.diagramData} />
-              )}
-
-              <h2 className="font-display text-lg font-semibold text-foreground leading-snug mb-5">
-                <VocabHighlighter text={currentQuestion.text} />
-              </h2>
-
-              {/* V5: Timeline (shown after answer for sequence questions) */}
-              {currentQuestion.timelineData && currentQuestion.versionFormat === 'timeline' && (
-                <Timeline events={currentQuestion.timelineData} />
-              )}
-
-              <div className="space-y-2.5">
+              {/* Answer choices */}
+              <div className="mt-4 space-y-3">
                 {currentQuestion.options.map((option, i) => {
                   let optionStyle = 'bg-card border-border hover:border-primary/40';
                   if (showResult) {
-                    if (i === currentQuestion.correctIndex) optionStyle = 'bg-secondary/10 border-secondary text-foreground';
-                    else if (i === selectedOption && i !== currentQuestion.correctIndex) optionStyle = 'bg-destructive/10 border-destructive text-foreground';
+                    if (i === currentQuestion.correctIndex) optionStyle = 'bg-success/10 border-success';
+                    else if (i === selectedOption) optionStyle = 'bg-destructive/10 border-destructive';
                   } else if (i === selectedOption) {
-                    optionStyle = 'bg-primary/10 border-primary text-foreground';
+                    optionStyle = 'bg-accent/15 border-accent';
                   }
                   return (
-                    <button key={i} onClick={() => handleSelect(i)} className={`w-full rounded-xl border-2 p-4 text-left text-sm font-medium transition-all ${optionStyle}`}>
+                    <button key={i} onClick={() => handleSelect(i)} className={`w-full rounded-xl border-2 p-4 text-left transition-all ${optionStyle}`}>
                       <div className="flex items-center gap-3">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">{String.fromCharCode(65 + i)}</span>
-                        <span><VocabHighlighter text={option} /></span>
-                        {showResult && i === currentQuestion.correctIndex && <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-secondary" />}
-                        {showResult && i === selectedOption && i !== currentQuestion.correctIndex && <XCircle className="ml-auto h-5 w-5 shrink-0 text-destructive" />}
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-muted-foreground">{String.fromCharCode(65 + i)}</span>
+                        <span className="flex-1 text-base font-medium text-foreground leading-snug"><VocabHighlighter text={option} /></span>
+                        <SpeakButton text={option} speak={speak} stop={stop} isSpeaking={isSpeaking} small />
+                        {showResult && i === currentQuestion.correctIndex && <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />}
+                        {showResult && i === selectedOption && i !== currentQuestion.correctIndex && <XCircle className="h-5 w-5 shrink-0 text-destructive" />}
                       </div>
                     </button>
                   );
                 })}
               </div>
 
-              {/* XP earned animation */}
-              {showResult && earnedXP > 0 && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-3 flex items-center justify-center gap-1">
-                  <Zap className="h-4 w-4 text-accent-foreground" />
-                  <span className="text-sm font-bold text-accent-foreground">+{earnedXP} XP</span>
-                </motion.div>
-              )}
-
+              {/* Strategy tip */}
               {showStrategy && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-5 rounded-xl border-2 border-accent bg-accent/10 p-4">
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-xl border border-accent bg-accent/10 p-4">
                   <div className="flex items-start gap-2">
                     <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-accent-foreground" />
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{isGenAlpha ? 'Coach Says 🎤' : 'Pattern Tip'}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{tipText}</p>
+                      <p className="text-sm font-semibold text-foreground">{isGenAlpha ? 'Coach Says' : 'Strategy Tip'}</p>
+                      <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{tipText}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -248,15 +287,16 @@ const AssessmentPage = () => {
         </div>
       </main>
 
-      <div className="sticky bottom-0 border-t border-border bg-card/80 backdrop-blur-sm px-4 py-4">
+      {/* Bottom action bar */}
+      <div className="sticky bottom-0 border-t border-border bg-card px-4 py-4">
         <div className="mx-auto max-w-lg">
           {!showResult ? (
-            <Button onClick={handleSubmit} disabled={selectedOption === null} className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40">
-              {isGenAlpha ? 'Lock It In 🔒' : 'Check Answer'}
+            <Button onClick={handleSubmit} disabled={selectedOption === null} className="w-full h-12 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-base font-semibold disabled:opacity-40">
+              Check Answer
             </Button>
           ) : (
-            <Button onClick={handleNext} className="w-full h-12 bg-secondary text-secondary-foreground hover:bg-secondary/90 gap-2">
-              {feedbackMode && feedbackIndex < feedbackQuestions.length - 1 ? (isGenAlpha ? 'Next One 💪' : 'Next Practice') : (isGenAlpha ? 'Keep Going 🚀' : 'Continue')}
+            <Button onClick={handleNext} className="w-full h-12 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 text-base font-semibold gap-2">
+              {feedbackMode && feedbackIndex < feedbackQuestions.length - 1 ? 'Next Practice' : 'Continue'}
               <ArrowRight className="h-4 w-4" />
             </Button>
           )}
@@ -266,6 +306,7 @@ const AssessmentPage = () => {
   );
 };
 
+/* ───────── Results Screen ───────── */
 function ResultsScreen({ session, nickname, isGenAlpha, getStandardPerformance, onDone }: {
   session: NonNullable<ReturnType<typeof import('@/context/AppContext').useAppState>['session']>;
   nickname: string; isGenAlpha: boolean;
@@ -276,48 +317,40 @@ function ResultsScreen({ session, nickname, isGenAlpha, getStandardPerformance, 
   const correctQ = session.answers.filter(a => a.correct).length;
   const pct = totalQ > 0 ? Math.round((correctQ / totalQ) * 100) : 0;
   const passed = pct >= 70;
-  const totalXP = session.answers.reduce((sum, a) => sum + (a.xpEarned || 0), 0);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-secondary/20">
-          <BarChart3 className="h-10 w-10 text-secondary" />
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm text-center">
+        <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${passed ? 'bg-success/15' : 'bg-destructive/15'}`}>
+          {passed ? <CheckCircle2 className="h-10 w-10 text-success" /> : <XCircle className="h-10 w-10 text-destructive" />}
         </div>
-        <h2 className="font-display text-2xl font-bold text-foreground">
-          {isGenAlpha ? (passed ? 'You ate that up! 🔥' : 'You got cooked a lil bit 💀') : `Great Work, ${nickname}!`}
+        <h2 className="text-2xl font-bold text-foreground">
+          {passed ? 'Well done!' : 'Keep practicing.'}
         </h2>
-        <p className="mt-2 text-muted-foreground">
-          {correctQ} of {totalQ} correct ({pct}%)
-          {session.quizMode === 'mock-sol' && (
-            <span className={`ml-2 font-bold ${passed ? 'text-secondary' : 'text-destructive'}`}>
-              {passed ? '✅ PASS' : '❌ DID NOT PASS'}
-            </span>
-          )}
+        <p className="mt-2 text-lg text-muted-foreground">
+          {correctQ} of {totalQ} correct · {pct}%
         </p>
-        <div className="mt-2 flex items-center justify-center gap-1">
-          <Zap className="h-4 w-4 text-accent-foreground" />
-          <span className="text-sm font-bold text-accent-foreground">{totalXP} XP earned</span>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Retake #{session.retakeNumber} · V{((session.retakeNumber - 1) % 5) + 1} ({VERSION_FORMAT_LABELS[['direct', 'quote', 'visual', 'diagram', 'timeline'][((session.retakeNumber - 1) % 5)] as import('@/types/sol').VersionFormat]})
-        </p>
+        {session.quizMode === 'mock-sol' && (
+          <p className={`mt-1 text-sm font-bold ${passed ? 'text-success' : 'text-destructive'}`}>
+            {passed ? 'PASS' : 'DID NOT PASS'}
+          </p>
+        )}
         <div className="mt-6 space-y-2">
           {solStandards.filter(s => s.id !== 'VUS.1' && session.answers.some(a => a.standardId === s.id)).map(std => {
             const perf = getStandardPerformance(std.id);
             const p = perf.total > 0 ? Math.round((perf.correct / perf.total) * 100) : 0;
             return (
-              <div key={std.id} className="rounded-lg bg-card p-3 text-left">
+              <div key={std.id} className="rounded-xl bg-card border border-border p-3 text-left">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-foreground">{std.id}</span>
-                  <span className={p >= 70 ? 'text-secondary' : 'text-destructive'}>{p}%</span>
+                  <span className={p >= 70 ? 'text-success font-bold' : 'text-destructive font-bold'}>{p}%</span>
                 </div>
                 <Progress value={p} className="mt-1.5 h-2" />
               </div>
             );
           })}
         </div>
-        <Button onClick={onDone} className="mt-6 w-full bg-primary text-primary-foreground">Done</Button>
+        <Button onClick={onDone} className="mt-6 w-full h-12 rounded-xl bg-primary text-primary-foreground text-base font-semibold">Done</Button>
       </motion.div>
     </div>
   );
